@@ -8,6 +8,7 @@ import com.example.petconnect.ui.home.HomeScreen
 import com.example.petconnect.ui.login.LoginScreen
 import com.example.petconnect.ui.register.RegisterScreen
 import com.google.firebase.auth.FirebaseAuth
+import com.example.petconnect.ui.main.MainScreen
 
 // Definimos las rutas como constantes en un solo lugar.
 // Esto evita errores de tipeo: si escribes mal "home" en un lugar y "hme" en otro,
@@ -17,6 +18,8 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+
+    const val PROFILE = "profile"
 }
 
 @Composable
@@ -65,7 +68,7 @@ fun AppNavigation() {
         }
 
         composable(Routes.HOME) {
-            HomeScreen(
+            MainScreen(
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         // Al cerrar sesión, borramos TODO el historial hasta el inicio
