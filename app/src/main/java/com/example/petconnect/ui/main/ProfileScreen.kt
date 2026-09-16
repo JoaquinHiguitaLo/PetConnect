@@ -25,10 +25,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.clickable
 
 @Composable
 fun ProfileScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLogout: () -> Unit,
+    onPersonalInfo: () -> Unit,
+    onPets: () -> Unit,
 ) {
 
     Column(
@@ -221,6 +225,7 @@ fun ProfileScreen(
                     horizontal = 20.dp,
                     vertical = 24.dp
                 )
+
         ) {
 
             // ========================================================
@@ -242,7 +247,8 @@ fun ProfileScreen(
                 ProfileOption(
                     icon = "👤",
                     title = "Información personal",
-                    description = "Nombre, correo y datos de contacto"
+                    description = "Nombre, correo y datos de contacto",
+                    onClick = onPersonalInfo
                 )
 
                 ProfileDivider()
@@ -250,7 +256,8 @@ fun ProfileScreen(
                 ProfileOption(
                     icon = "🐾",
                     title = "Mis mascotas",
-                    description = "Administra la información de tus mascotas"
+                    description = "Administra la información de tus mascotas",
+                    onClick = onPets
                 )
 
                 ProfileDivider()
@@ -342,12 +349,17 @@ private fun ProfileSectionCard(
 private fun ProfileOption(
     icon: String,
     title: String,
-    description: String
+    description: String,
+    onClick: (() -> Unit)? = null
+
 ) {
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(enabled = onClick != null) {
+                onClick?.invoke()
+            }
             .padding(
                 horizontal = 16.dp,
                 vertical = 16.dp
