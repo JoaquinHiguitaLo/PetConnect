@@ -42,9 +42,9 @@ fun HomeScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
 
-        // ============================================================
-        // HEADER
-        // ============================================================
+// ============================================================
+// HEADER
+// ============================================================
 
         Column(
             modifier = Modifier
@@ -59,28 +59,76 @@ fun HomeScreen(
                 .padding(
                     start = 20.dp,
                     end = 20.dp,
-                    top = 20.dp,
+                    top = 45.dp,
                     bottom = 20.dp
                 )
         ) {
 
-            Text(
-                text = "UBICACIÓN ACTUAL",
-                color = MaterialTheme.colorScheme.primaryContainer,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium
-            )
+            // --------------------------------------------------------
+            // UBICACIÓN + BOTONES SUPERIORES
+            // --------------------------------------------------------
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
 
-            Text(
-                text = "📍 Antioquia, Medellín",
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+                // Información de ubicación
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+
+                    Text(
+                        text = "UBICACIÓN ACTUAL",
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "📍 Antioquia, Medellín",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Botón de notificaciones
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.15f)
+                    )
+                ) {
+                    Text(
+                        text = "🔔",
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Botón de perfil
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.15f)
+                    )
+                ) {
+                    Text(
+                        text = "👤",
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // --------------------------------------------------------
+            // BUSCADOR
+            // --------------------------------------------------------
 
             OutlinedTextField(
                 value = "",
@@ -91,11 +139,23 @@ fun HomeScreen(
                         text = "Buscar veterinarias, paseadores..."
                     )
                 },
+                leadingIcon = {
+                    Text(text = "🔍")
+                },
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
+                    focusedContainerColor = Color.White.copy(alpha = 0.12f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.30f),
+                    focusedBorderColor = Color.White.copy(alpha = 0.60f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.70f),
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.85f),
+                    unfocusedTextColor = Color.White,
+                    focusedTextColor = Color.White
+                )
             )
         }
-
 
         // ============================================================
         // CONTENIDO PRINCIPAL

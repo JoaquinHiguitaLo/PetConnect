@@ -50,8 +50,7 @@ fun MainScreen(
             )
 
             4 -> ProfileScreen(
-                modifier = Modifier.padding(innerPadding),
-                onLogout = onLogout
+                modifier = Modifier.padding(innerPadding)
             )
         }
     }
