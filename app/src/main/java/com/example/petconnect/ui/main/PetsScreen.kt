@@ -16,28 +16,58 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.petconnect.ui.theme.PetConnectTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.petconnect.viewmodel.PetsViewModel
+import com.example.petconnect.data.model.Pet
 
 @Composable
 fun PetsScreen(
     modifier: Modifier = Modifier,
     onAddPet: () -> Unit = {}
 ) {
+
+    // ViewModel encargado de manejar las mascotas.
+    val petsViewModel: PetsViewModel = viewModel()
+
+    // Observamos el estado del ViewModel.
+    val uiState by petsViewModel.uiState.collectAsState()
+
+    // Cargamos las mascotas cuando se muestra la pantalla.
+    LaunchedEffect(Unit) {
+        //obtiene el usuario que actualmente tiene sesión iniciada
+        val usuarioId =
+            com.google.firebase.auth.FirebaseAuth
+                .getInstance()
+                .currentUser
+                ?.uid
+
+        if (usuarioId != null) {
+            //pasa ese UID al ViewModel
+            petsViewModel.cargarMascotas(usuarioId)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
 
-        PetsHeader()
+        PetsHeader(
+            cantidadMascotas = uiState.pets.size
+        )
 
         PetsContent(
+            pets = uiState.pets,
             onAddPet = onAddPet
         )
     }
 }
 
 @Composable
-private fun PetsHeader() {
+private fun PetsHeader(
+    cantidadMascotas: Int
+) {
 
     Column(
         modifier = Modifier
@@ -110,7 +140,7 @@ private fun PetsHeader() {
         ) {
 
             SummaryChip(
-                text = "3 mascotas",
+                text = "$cantidadMascotas mascotas",
                 color = MaterialTheme.colorScheme.primaryContainer
             )
 
@@ -151,38 +181,26 @@ private fun SummaryChip(
 
 @Composable
 private fun PetsContent(
+    pets: List<Pet>,
     onAddPet: () -> Unit
 ) {
-
-    val pets = listOf(
+    val petsUi = pets.map { pet ->
         PetUi(
-            name = "Luna",
-            species = "Perro",
-            breed = "Golden Retriever",
-            age = "3 años",
-            size = "Grande",
-            emoji = "🐕",
-            vaccinated = true
-        ),
-        PetUi(
-            name = "Michi",
-            species = "Gato",
-            breed = "Siamés",
-            age = "2 años",
-            size = "Mediano",
-            emoji = "🐈",
-            vaccinated = true
-        ),
-        PetUi(
-            name = "Coco",
-            species = "Perro",
-            breed = "Beagle",
-            age = "5 años",
-            size = "Mediano",
-            emoji = "🐶",
+            name = pet.nombre,
+            species = pet.especie,
+            breed = pet.raza ?: "Sin raza",
+            age = "${pet.edad} años",
+            size = pet.tamano,
+            emoji = when (pet.especie.lowercase()) {
+                "perro" -> "🐕"
+                "gato" -> "🐈"
+                "conejo" -> "🐇"
+                "ave" -> "🐦"
+                else -> "🐾"
+            },
             vaccinated = false
         )
-    )
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -197,7 +215,7 @@ private fun PetsContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            items(pets) { pet ->
+            items(petsUi) { pet ->
                 PetCard(pet)
             }
 

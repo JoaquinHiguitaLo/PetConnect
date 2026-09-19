@@ -38,6 +38,7 @@ android {
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
+
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
@@ -57,8 +58,12 @@ dependencies {
     //usa el set de versiones 33.5.1 y el BoM se encarga de que todas las librerías de Firebase que agregues después sean compatibles entre sí.
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
     //firebase-auth-ktx es específicamente el SDK de autenticación, que es lo que necesitamos para HU-01.
+    //Analítica de uso de la aplicación
     implementation("com.google.firebase:firebase-analytics")
+    //Usuarios / login / registro / UID
     implementation("com.google.firebase:firebase-auth")
+    //Base de datos
+    implementation("com.google.firebase:firebase-firestore")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 

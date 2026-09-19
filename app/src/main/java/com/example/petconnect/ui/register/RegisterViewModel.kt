@@ -3,8 +3,8 @@ package com.example.petconnect.ui.register
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.petconnect.data.AuthRepository
-import com.example.petconnect.data.AuthResult
+import com.example.petconnect.data.repository.AuthRepository
+import com.example.petconnect.data.repository.AuthResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

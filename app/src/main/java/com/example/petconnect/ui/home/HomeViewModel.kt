@@ -1,7 +1,7 @@
 package com.example.petconnect.ui.home
 
 import androidx.lifecycle.ViewModel
-import com.example.petconnect.data.AuthRepository
+import com.example.petconnect.data.repository.AuthRepository
 
 class HomeViewModel(
     private val authRepository: AuthRepository = AuthRepository()

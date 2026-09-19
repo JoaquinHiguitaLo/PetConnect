@@ -37,6 +37,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.petconnect.data.model.Pet
+import com.example.petconnect.viewmodel.PetsViewModel
+import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.*
 
 
 @Composable
@@ -100,7 +107,18 @@ fun AddPetScreen(
         mutableStateOf("")
     }
 
+    val petsViewModel: PetsViewModel = viewModel()
+    val uiState by petsViewModel.uiState.collectAsState()
 
+    LaunchedEffect(uiState.operationSuccess) {
+
+        if (uiState.operationSuccess) {
+
+            petsViewModel.limpiarResultadoOperacion()
+
+            onBack()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -415,16 +433,25 @@ fun AddPetScreen(
             )
 
             OutlinedTextField(
+
                 value = age,
                 onValueChange = {
                     age = it
                 },
                 modifier = Modifier.fillMaxWidth(),
+
                 placeholder = {
-                    Text("Ej: 3 años")
+                    Text("Ej: 3")
                 },
+
+                keyboardOptions = KeyboardOptions (
+                    keyboardType = KeyboardType.Number
+                ),
+
                 shape = RoundedCornerShape(16.dp),
+
                 singleLine = true
+
             )
 
 
@@ -483,27 +510,63 @@ fun AddPetScreen(
 
             // ========================================================
             // GUARDAR
-            // ========================================================
+            // ==============  ==========================================
+
+            val formularioValido =
+                name.isNotBlank() &&
+                        species.isNotBlank() &&
+                        age.toIntOrNull() != null &&
+                        size.isNotBlank()
 
             Button(
                 onClick = {
-                    // Por ahora solamente visual.
-                    // Más adelante guardaremos la mascota en Firestore.
+                    val usuarioId = FirebaseAuth
+                        .getInstance()
+                        .currentUser
+                        ?.uid
+
+                    if (usuarioId != null) {
+
+                        val pet = Pet(
+                            id = "",
+                            usuarioId = usuarioId,
+                            nombre = name.trim(),
+                            especie = species,
+                            raza = breed.ifBlank { null },
+                            edad = age.toInt(),
+                            tamano = size,
+                            foto = null
+                        )
+
+                        petsViewModel.agregarMascota(pet)
+                    }
                 },
+
+                enabled = formularioValido && !uiState.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFEAE7DE),
-                    contentColor = Color(0xFF777777)
+                    containerColor = if (formularioValido) {
+                        Color(0xFF227C78)
+                    } else {
+                        Color(0xFFEAE7DE)
+                    },
+                    contentColor = if (formularioValido) {
+                        Color.White
+                    } else {
+                        Color(0xFF777777)
+                    }
                 )
             ) {
 
                 Text(
-                    text = "🐾  Guardar mascota",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    if (uiState.isLoading) {
+                        "Guardando..."
+                    } else {
+                        "Guardar mascota" }
+
                 )
             }
         }
