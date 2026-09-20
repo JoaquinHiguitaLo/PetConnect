@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +25,9 @@ import com.example.petconnect.data.model.Pet
 @Composable
 fun PetsScreen(
     modifier: Modifier = Modifier,
-    onAddPet: () -> Unit = {}
+    onAddPet: () -> Unit = {},
+    onEditPet: (Pet) -> Unit = {},
+    onDeletePet: (Pet) -> Unit
 ) {
 
     // ViewModel encargado de manejar las mascotas.
@@ -59,7 +63,9 @@ fun PetsScreen(
 
         PetsContent(
             pets = uiState.pets,
-            onAddPet = onAddPet
+            onAddPet = onAddPet,
+            onEditPet = onEditPet,
+            onDeletePet = onDeletePet
         )
     }
 }
@@ -182,10 +188,13 @@ private fun SummaryChip(
 @Composable
 private fun PetsContent(
     pets: List<Pet>,
-    onAddPet: () -> Unit
+    onAddPet: () -> Unit,
+    onEditPet: (Pet) -> Unit,
+    onDeletePet: (Pet) -> Unit
 ) {
     val petsUi = pets.map { pet ->
         PetUi(
+            id = pet.id,
             name = pet.nombre,
             species = pet.especie,
             breed = pet.raza ?: "Sin raza",
@@ -215,10 +224,28 @@ private fun PetsContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            items(petsUi) { pet ->
-                PetCard(pet)
-            }
+            items(petsUi) { petUi ->
 
+                val petOriginal = pets.firstOrNull {
+                    it.id == petUi.id
+                }
+
+                PetCard(
+                    pet = petUi,
+
+                    onEditPet = {
+                        if (petOriginal != null) {
+                            onEditPet(petOriginal)
+                        }
+                    },
+
+                    onDeletePet = {
+                        if (petOriginal != null) {
+                            onDeletePet(petOriginal)
+                        }
+                    }
+                )
+            }
 
             item {
                 Spacer(
@@ -244,6 +271,7 @@ private fun PetsContent(
 }
 
 private data class PetUi(
+    val id: String,
     val name: String,
     val species: String,
     val breed: String,
@@ -255,7 +283,9 @@ private data class PetUi(
 
 @Composable
 private fun PetCard(
-    pet: PetUi
+    pet: PetUi,
+    onEditPet: () -> Unit,
+    onDeletePet: () -> Unit
 ) {
 
     var expanded by remember { mutableStateOf(false) }
@@ -426,13 +456,23 @@ private fun PetCard(
                     }
 
                     Button(
-                        onClick = {
-                            // Por ahora solamente visual.
-                            // Más adelante navegará a editar mascota.
-                        },
+                        onClick = onEditPet,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Editar mascota")
+                    }
+                    IconButton(
+                        onClick = onDeletePet,
+                        modifier = Modifier
+                            .size(45.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFFE5E5))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar mascota",
+                            tint = Color(0xFFE53935)
+                        )
                     }
                 }
 
@@ -520,3 +560,33 @@ private fun VaccineBadge(
     }
 }
 
+// ============================================================
+// FLUJO DE EDICIÓN DE MASCOTAS
+// ============================================================
+// PetCard no controla directamente la navegación.
+//
+// Cuando el usuario pulsa "Editar mascota", PetCard ejecuta
+// un callback (onEditPet) y devuelve la mascota seleccionada.
+//
+// PetsScreen/MainScreen se encargan posteriormente de decidir
+// qué pantalla abrir.
+//
+// Conservamos el ID de Firestore porque una actualización
+// necesita identificar exactamente qué documento modificar.
+//
+// Flujo:
+//
+// PetCard
+//    ↓
+// onEditPet(Pet)
+//    ↓
+// MainScreen
+//    ↓
+// EditPetScreen
+//    ↓
+// PetsViewModel
+//    ↓
+// PetRepository
+//    ↓
+// Firestore
+// ============================================================

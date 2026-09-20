@@ -125,6 +125,115 @@ fun agregarMascota(pet: Pet) {
             }
     }
 }
+
+    // ========================================================
+// UPDATE - ACTUALIZAR MASCOTA
+// ========================================================
+// Recibe una mascota que ya existe y solicita al Repository
+// actualizar el documento correspondiente en Firestore.
+//
+// Es importante que el objeto conserve su ID original,
+// porque ese ID permite identificar qué documento debemos
+// modificar.
+// ========================================================
+    fun actualizarMascota(pet: Pet) {
+
+        viewModelScope.launch {
+
+            // Indicamos que comenzó la operación.
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = null,
+                operationSuccess = false
+            )
+
+            // Enviamos la mascota modificada al Repository.
+            val result = petRepository.actualizarMascota(pet)
+
+            result
+                .onSuccess {
+
+                    // Firestore actualizó correctamente el documento.
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        operationSuccess = true,
+                        errorMessage = null
+                    )
+                }
+                .onFailure { error ->
+
+                    // Se produjo un error durante la actualización.
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        operationSuccess = false,
+                        errorMessage = error.message
+                            ?: "No se pudo actualizar la mascota"
+                    )
+                }
+        }
+    }
+
+    // ========================================================
+    // DELETE - ELIMINAR MASCOTA
+    // ========================================================
+    // Coordina la eliminación de una mascota.
+    //
+    // El ViewModel:
+    // 1. Indica que comenzó la operación.
+    // 2. Llama al Repository.
+    // 3. Actualiza el estado según el resultado.
+    // ========================================================
+    fun eliminarMascota(pet: Pet) {
+
+        viewModelScope.launch {
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = null,
+                operationSuccess = false
+            )
+
+            val result = petRepository.eliminarMascota(pet)
+
+            result
+                .onSuccess {
+                    // ====================================================
+                    // ACTUALIZAR LISTA LOCAL DESPUÉS DEL DELETE
+                    // ====================================================
+                    // Firestore confirmó que la mascota fue eliminada.
+                    //
+                    // Como la operación fue exitosa, también eliminamos
+                    // la mascota de la lista que mantiene el ViewModel.
+                    //
+                    // Esto permite que Compose actualice inmediatamente
+                    // la interfaz sin tener que salir y volver a entrar
+                    // a la pantalla de mascotas.
+                    //
+                    // Ejemplo:
+                    // [Figaro, Bart, Lunita]
+                    //       ↓ eliminar Figaro
+                    // [Bart, Lunita]
+                    // ====================================================
+
+                    _uiState.value = _uiState.value.copy(
+                        pets = _uiState.value.pets.filter { it.id != pet.id },
+                        isLoading = false,
+                        operationSuccess = true,
+                        errorMessage = null
+                    )
+                }
+                .onFailure { error ->
+
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        operationSuccess = false,
+                        errorMessage = error.message
+                            ?: "No se pudo eliminar la mascota"
+                    )
+                }
+        }
+    }
+
     fun limpiarResultadoOperacion() {
 
         _uiState.value = _uiState.value.copy(

@@ -96,13 +96,12 @@ class PetRepository {
 // Elimina una mascota existente.
 // ============================================================
 
-    suspend fun eliminarMascota(mascotaId: String): Result<Unit> {
+    suspend fun eliminarMascota(pet: Pet): Result<Unit> {
 
         return try {
 
-            db
-                .collection("mascotas")
-                .document(mascotaId)
+            db.collection("mascotas")
+                .document(pet.id)
                 .delete()
                 .await()
 
@@ -113,5 +112,4 @@ class PetRepository {
             Result.failure(e)
         }
     }
-
 }
