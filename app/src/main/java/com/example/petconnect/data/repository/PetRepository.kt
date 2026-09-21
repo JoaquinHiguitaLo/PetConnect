@@ -15,15 +15,30 @@ class PetRepository {
     // ============================================================
     // CREATE
     // Crea una nueva mascota en Firestore.
+    // El ID del documento y el campo "id" del objeto Pet
+    // serán exactamente el mismo valor.
     // ============================================================
     suspend fun crearMascota(pet: Pet): Result<String> {
         return try {
 
+            // Primero pedimos a Firestore que genere un ID para
+            // el nuevo documento, pero todavía no guardamos nada.
             val documentReference = db
                 .collection("mascotas")
-                .add(pet)
-                .await() //Espera a que Firebase termine esta operación y luego continúa
+                .document()
 
+            // Creamos una copia de la mascota utilizando como ID
+            // el mismo ID que tendrá el documento de Firestore.
+            val petConId = pet.copy(
+                id = documentReference.id
+            )
+
+            // Guardamos la mascota utilizando ese documento.
+            documentReference
+                .set(petConId)
+                .await()
+
+            // Devolvemos el ID generado.
             Result.success(documentReference.id)
 
         } catch (e: Exception) {

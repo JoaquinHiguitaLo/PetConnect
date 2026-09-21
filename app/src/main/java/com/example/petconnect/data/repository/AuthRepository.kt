@@ -4,6 +4,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.tasks.await
 
+
 // Representa el resultado de una operación de autenticación.
 // En vez de devolver un booleano simple, usamos una "sealed class"
 // para poder llevar información adicional en cada caso (el usuario o el mensaje de error).

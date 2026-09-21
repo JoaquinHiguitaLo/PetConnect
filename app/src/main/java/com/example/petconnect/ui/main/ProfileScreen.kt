@@ -26,6 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.getValue
 
 @Composable
 fun ProfileScreen(
@@ -33,7 +37,15 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onPersonalInfo: () -> Unit,
     onPets: () -> Unit,
+    viewModel: ProfileViewModel = viewModel()
 ) {
+    // Observamos el estado del perfil.
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Cargamos los datos del usuario al entrar a esta pantalla.
+    LaunchedEffect(Unit) {
+        viewModel.cargarUsuario()
+    }
 
     Column(
         modifier = modifier
@@ -161,7 +173,9 @@ fun ProfileScreen(
                     ) {
 
                         Text(
-                            text = "Manuela",
+                            text = uiState.user?.nombreCompleto
+                                ?.takeIf { it.isNotBlank() }
+                                ?: "Usuario",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -185,7 +199,7 @@ fun ProfileScreen(
                     )
 
                     Text(
-                        text = "manuela@email.com",
+                        text = uiState.user?.correo ?: "Cargando...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF6F6F6F)
                     )
@@ -212,6 +226,7 @@ fun ProfileScreen(
                 }
             }
         }
+    }
 
 
         // ============================================================
@@ -226,7 +241,22 @@ fun ProfileScreen(
                     vertical = 24.dp
                 )
 
+
         ) {
+            uiState.errorMessage?.let { error ->
+
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = 20.dp,
+                            vertical = 8.dp
+                        )
+                )
+            }
 
             // ========================================================
             // MI CUENTA
@@ -318,7 +348,6 @@ fun ProfileScreen(
             )
         }
     }
-}
 
 
 // ====================================================================

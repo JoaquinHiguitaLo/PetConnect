@@ -3,8 +3,10 @@ package com.example.petconnect.ui.register
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.petconnect.data.model.User
 import com.example.petconnect.data.repository.AuthRepository
 import com.example.petconnect.data.repository.AuthResult
+import com.example.petconnect.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,89 +27,198 @@ data class RegisterUiState(
 )
 
 class RegisterViewModel(
-    // Le "inyectamos" el repository. Por ahora lo creamos aquí directamente;
-    // más adelante,  inyección de dependencias (Hilt), esto se hace de otra forma.
-    private val authRepository: AuthRepository = AuthRepository()
+    // Repository encargado de Firebase Authentication.
+    private val authRepository: AuthRepository = AuthRepository(),
+
+    // Repository encargado de los datos adicionales del usuario en Firestore.
+    private val userRepository: UserRepository = UserRepository()
 ) : ViewModel() {
 
-    // _uiState es privado y "mutable" (se puede cambiar) — solo el ViewModel puede tocarlo.
+    // _uiState es privado y mutable.
+    // Solo el ViewModel puede modificarlo.
     private val _uiState = MutableStateFlow(RegisterUiState())
 
-    // uiState es público pero "de solo lectura" — la pantalla (Compose) solo puede leerlo,
-    // nunca cambiarlo directamente. Esto evita bugs donde la UI "hace trampa" y cambia
-    // datos que no le corresponden.
+    // La UI solamente puede observar el estado.
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
-    // Estas 3 funciones se llaman cada vez que el usuario escribe en un campo.
-    // Actualizamos el texto Y limpiamos el error de ese campo (para que no se quede
-    // pegado un error viejo mientras el usuario está corrigiendo).
+    // Se ejecuta cada vez que cambia el correo.
     fun onEmailChange(value: String) {
-        _uiState.update { it.copy(email = value, emailError = null, generalError = null) }
+        _uiState.update {
+            it.copy(
+                email = value,
+                emailError = null,
+                generalError = null
+            )
+        }
     }
 
+    // Se ejecuta cada vez que cambia la contraseña.
     fun onPasswordChange(value: String) {
-        _uiState.update { it.copy(password = value, passwordError = null, generalError = null) }
+        _uiState.update {
+            it.copy(
+                password = value,
+                passwordError = null,
+                generalError = null
+            )
+        }
     }
 
+    // Se ejecuta cada vez que cambia la confirmación de contraseña.
     fun onConfirmPasswordChange(value: String) {
-        _uiState.update { it.copy(confirmPassword = value, confirmPasswordError = null, generalError = null) }
+        _uiState.update {
+            it.copy(
+                confirmPassword = value,
+                confirmPasswordError = null,
+                generalError = null
+            )
+        }
     }
 
-    // Esto se llama cuando el usuario hace clic en "Registrarse"
+    // Se ejecuta cuando el usuario pulsa "Crear cuenta".
     fun onRegisterClick() {
-        // Primero validamos localmente. Si algo está mal, ni siquiera llamamos a Firebase.
+
+        // Primero validamos los campos localmente.
+        // Si existe algún error, no hacemos ninguna petición a Firebase.
         if (!validateFields()) return
 
-        _uiState.update { it.copy(isLoading = true, generalError = null) }
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                generalError = null,
+                registrationSuccess = false
+            )
+        }
 
-        // viewModelScope.launch nos permite ejecutar código "suspend" (que espera cosas)
-        // de forma segura, ligado al ciclo de vida del ViewModel.
         viewModelScope.launch {
+
+            // ---------------------------------------------------------
+            // PASO 1: CREAR CUENTA EN FIREBASE AUTHENTICATION
+            // ---------------------------------------------------------
+
             val result = authRepository.register(
-                _uiState.value.email.trim(),   // .trim() quita espacios accidentales al inicio/final
+                _uiState.value.email.trim(),
                 _uiState.value.password
             )
+
             when (result) {
+
+                // Firebase Authentication creó correctamente la cuenta.
                 is AuthResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false, registrationSuccess = true) }
+
+                    val firebaseUser = result.user
+
+                    // ---------------------------------------------------------
+                    // PASO 2: CREAR PERFIL DEL USUARIO EN FIRESTORE
+                    // ---------------------------------------------------------
+
+                    val user = User(
+                        id = firebaseUser.uid,
+                        nombreCompleto = "",
+                        correo = firebaseUser.email ?: "",
+                        telefono = "",
+                        foto = null
+                    )
+
+                    // Guardamos el perfil utilizando el mismo UID
+                    // generado por Firebase Authentication.
+                    val userResult = userRepository.crearUsuario(user)
+
+                    when {
+
+                        // Las dos operaciones fueron exitosas.
+                        userResult.isSuccess -> {
+
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    registrationSuccess = true,
+                                    generalError = null
+                                )
+                            }
+                        }
+
+                        // Authentication funcionó, pero Firestore falló.
+                        else -> {
+
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    registrationSuccess = false,
+                                    generalError =
+                                        userResult.exceptionOrNull()?.message
+                                            ?: "La cuenta fue creada, pero no se pudo guardar el perfil."
+                                )
+                            }
+                        }
+                    }
                 }
+
+                // Firebase Authentication devolvió un error.
                 is AuthResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, generalError = result.message) }
+
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            registrationSuccess = false,
+                            generalError = result.message
+                        )
+                    }
                 }
             }
         }
     }
 
-    // Aquí viven TODAS las validaciones de los criterios de aceptación:
-    // - campos vacíos
-    // - formato de correo
-    // - contraseñas coinciden
+    // Validación local de los campos del formulario.
     private fun validateFields(): Boolean {
+
         val state = _uiState.value
         var isValid = true
 
         val emailError = when {
-            state.email.isBlank() -> "El correo electrónico es obligatorio."
-            !Patterns.EMAIL_ADDRESS.matcher(state.email.trim()).matches() -> "Formato de correo inválido."
+            state.email.isBlank() ->
+                "El correo electrónico es obligatorio."
+
+            !Patterns.EMAIL_ADDRESS
+                .matcher(state.email.trim())
+                .matches() ->
+                "Formato de correo inválido."
+
             else -> null
         }
-        if (emailError != null) isValid = false
+
+        if (emailError != null) {
+            isValid = false
+        }
 
         val passwordError = when {
-            state.password.isBlank() -> "La contraseña es obligatoria."
-            state.password.length < 6 -> "La contraseña debe tener al menos 6 caracteres."
+            state.password.isBlank() ->
+                "La contraseña es obligatoria."
+
+            state.password.length < 6 ->
+                "La contraseña debe tener al menos 6 caracteres."
+
             else -> null
         }
-        if (passwordError != null) isValid = false
+
+        if (passwordError != null) {
+            isValid = false
+        }
 
         val confirmPasswordError = when {
-            state.confirmPassword.isBlank() -> "Debes confirmar la contraseña."
-            state.confirmPassword != state.password -> "Las contraseñas no coinciden."
+            state.confirmPassword.isBlank() ->
+                "Debes confirmar la contraseña."
+
+            state.confirmPassword != state.password ->
+                "Las contraseñas no coinciden."
+
             else -> null
         }
-        if (confirmPasswordError != null) isValid = false
 
-        // Actualizamos el estado con todos los errores encontrados (o null si no hay)
+        if (confirmPasswordError != null) {
+            isValid = false
+        }
+
+        // Actualizamos todos los errores encontrados.
         _uiState.update {
             it.copy(
                 emailError = emailError,
@@ -115,6 +226,7 @@ class RegisterViewModel(
                 confirmPasswordError = confirmPasswordError
             )
         }
+
         return isValid
     }
 }
