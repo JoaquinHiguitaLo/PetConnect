@@ -81,6 +81,7 @@ fun MainScreen(
     var showEditPet by remember {
         mutableStateOf(false)
     }
+    var showCategories by remember { mutableStateOf(false) }
 
     var selectedPet by remember {
         mutableStateOf<Pet?>(null)
@@ -110,7 +111,7 @@ fun MainScreen(
             // El BottomNav solo aparece en las pantallas principales.
             // Las pantallas secundarias, como "Agregar mascota",
             // utilizan su propia flecha para regresar.
-            if (!showPersonalInfo && !showAddPet && !showEditPet) {
+            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories) {
                 BottomNav(
                     selectedItem = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -152,6 +153,17 @@ fun MainScreen(
                 }
             )
 
+        } else if (showCategories) {
+            CategoriesScreen(
+                onBack = {
+                    showCategories = false
+                },
+                onCategorySelected = { categoryId ->
+                    // Más adelante aquí abriremos los servicios
+                    // correspondientes a la categoría seleccionada.
+                    showCategories = false
+                }
+            )
         } else {
 
             // ====================================================
@@ -166,6 +178,9 @@ fun MainScreen(
 
                 0 -> HomeScreen(
                     onLogout = onLogout,
+                    onViewAllCategories = {
+                        showCategories = true
+                    },
                     modifier = Modifier.padding(innerPadding)
                 )
 

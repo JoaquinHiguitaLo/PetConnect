@@ -7,5 +7,6 @@ data class User(
     val nombreCompleto: String = "",
     val correo: String = "",
     val telefono: String = "",
-    val foto: String? = null
+    val foto: String? = null,
+    val rol: String = "CLIENTE"
 )

@@ -1,6 +1,7 @@
 package com.example.petconnect.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +34,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun HomeScreen(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    onViewAllCategories: () -> Unit
 ) {
 
     Column(
@@ -189,12 +191,24 @@ fun HomeScreen(
             // ========================================================
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Categorías",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Categorías",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Ver todas",
+                    modifier = Modifier.clickable{
+                        onViewAllCategories()
+                    },
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )}
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -255,6 +269,9 @@ fun HomeScreen(
 
                 Text(
                     text = "Ver todos",
+                    modifier = Modifier.clickable{
+                        onViewAllCategories()
+                    },
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
