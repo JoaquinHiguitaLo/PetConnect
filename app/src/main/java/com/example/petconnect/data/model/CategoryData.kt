@@ -38,9 +38,9 @@ val petConnectCategories = listOf(
         icono = "🎓"
     ),
     Category(
-        id = "farmacias",
-        nombre = "Farmacias",
-        icono = "💊"
+        id = "parques",
+        nombre = "Parques y jardines",
+        icono = "\uD83C\uDF33"
     ),
     Category(
         id = "tiendas",

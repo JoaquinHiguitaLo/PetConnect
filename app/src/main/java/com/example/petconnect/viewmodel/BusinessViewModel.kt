@@ -92,6 +92,38 @@ fun crearNegocio(business: Business) {
             }
         }
     }
+
+
+    /**
+     * Carga los negocios aprobados de una categoría.
+     */
+    fun cargarNegociosPorCategoria(categoryId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = null,
+                businesses = emptyList()
+            )
+
+            val result = businessRepository
+                .obtenerNegociosPorCategoria(categoryId)
+
+            result.onSuccess { businesses ->
+                _uiState.value = _uiState.value.copy(
+                    businesses = businesses,
+                    isLoading = false,
+                    errorMessage = null
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = error.message
+                        ?: "No se pudieron cargar los negocios."
+                )
+            }
+        }
+    }
+
     /**
      * Carga un negocio específico utilizando su ID.
      *

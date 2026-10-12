@@ -15,12 +15,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.viewmodel.PetsViewModel
+import com.example.petconnect.viewmodel.BusinessViewModel
 
 @Composable
 fun MainScreen(
     onLogout: () -> Unit
 ) {
     val petsViewModel: PetsViewModel = viewModel()
+
+    val businessViewModel: BusinessViewModel = viewModel()
 
     // ============================================================
     // NAVEGACIÓN PRINCIPAL
@@ -83,9 +86,20 @@ fun MainScreen(
     }
     var showCategories by remember { mutableStateOf(false) }
 
+    var showServicesByCategory by remember { mutableStateOf(false) }
+
+    var selectedCategoryId by remember { mutableStateOf("") }
+
+    var selectedBusinessId by remember { mutableStateOf("") }
+
+    var showBusinessDetail by remember {
+        mutableStateOf(false)
+    }
     var selectedPet by remember {
         mutableStateOf<Pet?>(null)
     }
+
+
 
     // ============================================================
     // MASCOTA SELECCIONADA PARA ELIMINAR
@@ -111,7 +125,7 @@ fun MainScreen(
             // El BottomNav solo aparece en las pantallas principales.
             // Las pantallas secundarias, como "Agregar mascota",
             // utilizan su propia flecha para regresar.
-            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories) {
+            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory) {
                 BottomNav(
                     selectedItem = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -153,18 +167,44 @@ fun MainScreen(
                 }
             )
 
+
+        } else if(showBusinessDetail) {
+            BusinessDetailScreen(
+                businessId = selectedBusinessId,
+                onBack = {
+                    showBusinessDetail = false
+                    showServicesByCategory = true
+                },
+                viewModel = businessViewModel
+            )
+
+
+        } else if (showServicesByCategory) {
+            ServicesByCategoryScreen(
+                categoryId = selectedCategoryId,
+                onBack = {
+                    showServicesByCategory = false
+                    showCategories = true
+                },
+                onBusinessSelected = { businessId ->
+                    selectedBusinessId = businessId
+                    showServicesByCategory = false
+                    showBusinessDetail = true
+                },
+                viewModel = businessViewModel
+            )
         } else if (showCategories) {
             CategoriesScreen(
                 onBack = {
                     showCategories = false
                 },
                 onCategorySelected = { categoryId ->
-                    // Más adelante aquí abriremos los servicios
-                    // correspondientes a la categoría seleccionada.
+                    selectedCategoryId = categoryId
                     showCategories = false
+                    showServicesByCategory = true
                 }
             )
-        } else {
+        }  else{
 
             // ====================================================
             // PANTALLAS PRINCIPALES
