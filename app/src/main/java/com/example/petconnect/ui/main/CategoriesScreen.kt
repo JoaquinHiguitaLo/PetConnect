@@ -30,6 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.petconnect.data.model.Category
 import com.example.petconnect.data.model.petConnectCategories
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.example.petconnect.R
 
 @Composable
 fun CategoriesScreen(
@@ -98,7 +102,9 @@ fun CategoriesScreen(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                bottom = 24.dp
+                start = 2.dp,
+                end = 2.dp,
+                bottom = 32.dp
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -121,44 +127,70 @@ fun CategoriesScreen(
 /**
  * Tarjeta individual de una categoría.
  */
+
 @Composable
 private fun CategoryCard(
     category: Category,
     onClick: () -> Unit
 ) {
+    // Relacionamos cada categoría con su imagen en drawable.
+    val imageRes = when (category.id) {
+        "veterinaria" -> R.drawable.veterinaria
+        "peluqueria" -> R.drawable.peluqueria
+        "bano" -> R.drawable.bano
+        "guarderia" -> R.drawable.guarderia
+        "paseadores" -> R.drawable.paseadores
+        "adiestramiento" -> R.drawable.adiestramiento
+        "tiendas" -> R.drawable.tienda
+        "parques" -> R.drawable.parque
+
+        // Farmacias todavía no tiene una ilustración propia.
+        else -> null
+    }
 
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp),
+            .height(170.dp),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 3.dp
         )
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
-            Text(
-                text = category.icono,
-                style = MaterialTheme.typography.headlineMedium
-            )
+            if (imageRes != null) {
+                Image(
+                    painter = painterResource(id = imageRes),
+                    contentDescription = category.nombre,
+                    modifier = Modifier.size(100.dp),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                // Conservamos el emoji para categorías sin imagen.
+                Text(
+                    text = category.icono,
+                    style = MaterialTheme.typography.headlineLarge
+                )
+            }
 
             Spacer(
-                modifier = Modifier.height(8.dp)
+                modifier = Modifier.height(10.dp)
             )
 
             Text(
                 text = category.nombre,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
