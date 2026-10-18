@@ -13,17 +13,32 @@ import com.example.petconnect.data.model.Pet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.viewmodel.PetsViewModel
 import com.example.petconnect.viewmodel.BusinessViewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 
 @Composable
 fun MainScreen(
     onLogout: () -> Unit
 ) {
     val petsViewModel: PetsViewModel = viewModel()
-
     val businessViewModel: BusinessViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
+    val profileUiState by profileViewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        profileViewModel.cargarUsuario()
+    }
+
+    val nombreUsuario = profileUiState.user
+        ?.nombreCompleto ?: ""
+        ?.substringBefore(" ")
+        ?.takeIf { it.isNotBlank() }
+        ?: "usuario"
 
     // ============================================================
     // NAVEGACIÓN PRINCIPAL
@@ -125,7 +140,7 @@ fun MainScreen(
             // El BottomNav solo aparece en las pantallas principales.
             // Las pantallas secundarias, como "Agregar mascota",
             // utilizan su propia flecha para regresar.
-            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory) {
+            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory && !showBusinessDetail) {
                 BottomNav(
                     selectedItem = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -221,6 +236,12 @@ fun MainScreen(
                     onViewAllCategories = {
                         showCategories = true
                     },
+                    onCategorySelected = { categoryId ->
+                        selectedCategoryId = categoryId
+                        showCategories = false
+                        showServicesByCategory = true
+                    },
+                    nombreUsuario = nombreUsuario,
                     modifier = Modifier.padding(innerPadding)
                 )
 

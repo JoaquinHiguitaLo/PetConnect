@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import com.example.petconnect.R
 import com.example.petconnect.data.model.petConnectCategories
 import com.example.petconnect.viewmodel.BusinessViewModel
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

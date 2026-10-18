@@ -34,7 +34,17 @@ import androidx.compose.ui.unit.dp
 import com.example.petconnect.data.model.Business
 import com.example.petconnect.data.model.petConnectCategories
 import com.example.petconnect.viewmodel.BusinessViewModel
-
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.petconnect.R
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.foundation.layout.PaddingValues
 @Composable
 fun ServicesByCategoryScreen(
     categoryId: String,
@@ -155,6 +165,8 @@ fun ServicesByCategoryScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(
@@ -179,64 +191,162 @@ private fun BusinessCard(
     business: Business,
     onClick: () -> Unit
 ) {
+    // Fotografía específica del negocio o ilustración de respaldo.
+    val imageRes = when {
+        business.nombre.contains("VetVida", ignoreCase = true) ->
+            R.drawable.vetvida
+
+        business.nombre.contains("Terranova", ignoreCase = true) ->
+            R.drawable.banonegocio
+
+        business.nombre.contains("Cuidador JM", ignoreCase = true) ->
+            R.drawable.guarderianegocio
+
+        business.nombre.contains("peluquer", ignoreCase = true) ->
+            R.drawable.peluquerianegocio
+
+        business.nombre.contains("tienda", ignoreCase = true) ->
+            R.drawable.tiendanegocio
+
+        business.nombre.contains("baño", ignoreCase = true) ||
+                business.nombre.contains("bano", ignoreCase = true) ->
+            R.drawable.banonegocio
+
+        business.nombre.contains("guarder", ignoreCase = true) ->
+            R.drawable.guarderianegocio
+
+        else -> when (business.categoria) {
+            "veterinaria" -> R.drawable.veterinaria
+            "peluqueria" -> R.drawable.peluqueria
+            "bano" -> R.drawable.bano
+            "guarderia" -> R.drawable.guarderia
+            "paseadores" -> R.drawable.paseadores
+            "adiestramiento" -> R.drawable.adiestramiento
+            "tiendas" -> R.drawable.tienda
+            "parques" -> R.drawable.parque
+            else -> R.drawable.veterinaria
+        }
+    }
+
+    val categoryName = petConnectCategories
+        .find { it.id == business.categoria }
+        ?.nombre ?: business.categoria
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 3.dp
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = business.nombre,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+        Column {
+            // Fotografía principal del negocio.
+            Image(
+                painter = painterResource(id = imageRes),
+                contentDescription = "Imagen de ${business.nombre}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(170.dp)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp
+                        )
+                    ),
+                contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                // Nombre y acceso al detalle.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = business.nombre,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
 
-                Text(
-                    text = business.direccion.ifBlank {
-                        "Dirección no disponible"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+                        Text(
+                            text = categoryName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                }
 
-            Text(
-                text = if (business.calificacion > 0.0) {
-                    "⭐ %.1f".format(business.calificacion)
-                } else {
-                    "Sin calificaciones"
-                },
-                style = MaterialTheme.typography.bodyMedium
-            )
+                // Calificación.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "Calificación",
+                        tint = androidx.compose.ui.graphics.Color(
+                            0xFFC9871F
+                        ),
+                        modifier = Modifier.size(20.dp)
+                    )
 
-            if (business.descripcion.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (business.calificacion > 0.0) {
+                            "%.1f".format(business.calificacion)
+                        } else {
+                            "Sin calificaciones"
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-                Text(
-                    text = business.descripcion,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2
-                )
+                // Dirección.
+                Row(
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "Dirección",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+
+                    Text(
+                        text = business.direccion.ifBlank {
+                            "Dirección no disponible"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
+
+                // Descripción.
+                if (business.descripcion.isNotBlank()) {
+                    Text(
+                        text = business.descripcion,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
             }
         }
     }
 }
+

@@ -1,5 +1,6 @@
 package com.example.petconnect.ui.home
 
+import android.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -28,6 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 
 @Composable
@@ -35,8 +41,11 @@ fun HomeScreen(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel(),
-    onViewAllCategories: () -> Unit
+    onViewAllCategories: () -> Unit,
+    onCategorySelected: (String) -> Unit,
+    nombreUsuario: String
 ) {
+    var textoBusqueda by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -112,18 +121,6 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Botón de perfil
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.15f)
-                    )
-                ) {
-                    Text(
-                        text = "👤",
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -133,20 +130,18 @@ fun HomeScreen(
             // --------------------------------------------------------
 
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = textoBusqueda,
+                onValueChange = { textoBusqueda = it },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
-                    Text(
-                        text = "Buscar veterinarias, paseadores..."
-                    )
+                    Text("Buscar veterinarias, paseadores...")
                 },
                 leadingIcon = {
-                    Text(text = "🔍")
+                    Text("🔍")
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
-                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
                     focusedContainerColor = Color.White.copy(alpha = 0.12f),
                     unfocusedBorderColor = Color.White.copy(alpha = 0.30f),
@@ -180,7 +175,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Hola, Manuela",
+                text = "Hola, ${nombreUsuario.substringBefore(" ").ifBlank { "usuario" }}",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -203,162 +198,169 @@ fun HomeScreen(
                 )
                 Text(
                     text = "Ver todas",
-                    modifier = Modifier.clickable{
+                    modifier = Modifier.clickable {
                         onViewAllCategories()
                     },
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
-                )}
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
                 CategoryChip(
                     icon = "🏥",
                     text = "Veterinarias",
-                    selected = true,
-                    onClick = { }
+                    selected = false,
+                    onClick = {
+                        onCategorySelected("veterinaria")
+                    }
                 )
 
                 CategoryChip(
                     icon = "✂️",
                     text = "Peluquerías",
                     selected = false,
-                    onClick = { }
+                    onClick = {
+                        onCategorySelected("peluqueria")
+                    }
                 )
 
                 CategoryChip(
                     icon = "🐕",
                     text = "Paseadores",
                     selected = false,
-                    onClick = { }
+                    onClick = {
+                        onCategorySelected("paseadores")
+                    }
                 )
 
                 CategoryChip(
                     icon = "🏨",
                     text = "Guarderías",
                     selected = false,
-                    onClick = { }
+                    onClick = {
+                        onCategorySelected("guarderia")
+                    }
                 )
             }
 
 
-            // ========================================================
-            // SERVICIOS DESTACADOS
-            // ========================================================
+                // ========================================================
+                // SERVICIOS DESTACADOS
+                // ========================================================
 
-            Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
 
-                Text(
-                    text = "Servicios destacados",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    Text(
+                        text = "Servicios destacados",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Ver todos",
+                        modifier = Modifier.clickable {
+                            onViewAllCategories()
+                        },
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+
+                    ServiceCard(
+                        emoji = "🏥",
+                        name = "Clínica VetVida",
+                        category = "Veterinaria",
+                        distance = "0.8 km",
+                        rating = "4.9",
+                        reviews = "128"
+                    )
+
+                    ServiceCard(
+                        emoji = "✂️",
+                        name = "PeloPet Spa",
+                        category = "Peluquería",
+                        distance = "1.2 km",
+                        rating = "4.7",
+                        reviews = "84"
+                    )
+                }
+
+
+                // ========================================================
+                // RECOMENDACIONES
+                // ========================================================
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = "Recomendados para Luna 🐾",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Ver más",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                RecommendationCard(
+                    emoji = "🐕",
+                    name = "Carlos el Paseador",
+                    category = "Paseador",
+                    distance = "0.4 km",
+                    rating = "5.0",
+                    price = "$15.000/paseo"
                 )
 
-                Text(
-                    text = "Ver todos",
-                    modifier = Modifier.clickable{
-                        onViewAllCategories()
-                    },
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+                Spacer(modifier = Modifier.height(10.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
-                ServiceCard(
-                    emoji = "🏥",
-                    name = "Clínica VetVida",
+                RecommendationCard(
+                    emoji = "👩‍⚕️",
+                    name = "Dra. Sofía Torres",
                     category = "Veterinaria",
-                    distance = "0.8 km",
+                    distance = "0.7 km",
                     rating = "4.9",
-                    reviews = "128"
+                    price = "Desde $30.000"
                 )
 
-                ServiceCard(
-                    emoji = "✂️",
-                    name = "PeloPet Spa",
-                    category = "Peluquería",
-                    distance = "1.2 km",
-                    rating = "4.7",
-                    reviews = "84"
-                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
             }
-
-
-            // ========================================================
-            // RECOMENDACIONES
-            // ========================================================
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Text(
-                    text = "Recomendados para Luna 🐾",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = "Ver más",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            RecommendationCard(
-                emoji = "🐕",
-                name = "Carlos el Paseador",
-                category = "Paseador",
-                distance = "0.4 km",
-                rating = "5.0",
-                price = "$15.000/paseo"
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            RecommendationCard(
-                emoji = "👩‍⚕️",
-                name = "Dra. Sofía Torres",
-                category = "Veterinaria",
-                distance = "0.7 km",
-                rating = "4.9",
-                price = "Desde $30.000"
-            )
-
-
-            Spacer(modifier = Modifier.height(20.dp))
-
         }
     }
-}
 
 
 // ====================================================================

@@ -121,7 +121,40 @@ class BusinessRepository {
         }
     }
 
+    /**
+     * Obtiene todos los negocios aprobados para el buscador general.
+     */
+    suspend fun obtenerNegociosAprobados(): Result<List<Business>> {
+        return try {
+            val snapshot = db
+                .collection("negocios")
+                .whereEqualTo("estadoVerificacion", "APROBADO")
+                .get()
+                .await()
 
+            val businesses = snapshot.documents.map { document ->
+                Business(
+                    id = document.id,
+                    prestadorId = document.getString("prestadorId") ?: "",
+                    nombre = document.getString("nombre") ?: "",
+                    categoria = document.getString("categoria") ?: "",
+                    descripcion = document.getString("descripcion") ?: "",
+                    direccion = document.getString("direccion") ?: "",
+                    telefono = document.getString("telefono") ?: "",
+                    latitud = document.getDouble("latitud") ?: 0.0,
+                    longitud = document.getDouble("longitud") ?: 0.0,
+                    imagen = document.getString("imagen"),
+                    calificacion = document.getDouble("calificacion") ?: 0.0,
+                    estadoVerificacion =
+                        document.getString("estadoVerificacion") ?: "PENDIENTE"
+                )
+            }
+
+            Result.success(businesses)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     /**
  * Obtiene un negocio específico utilizando su ID.
  *

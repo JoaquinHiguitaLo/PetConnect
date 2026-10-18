@@ -47,7 +47,7 @@ class ProfileViewModel(
     private val firebaseAuth = FirebaseAuth.getInstance()
 
     // Estado privado y mutable.
-    private val _uiState = MutableStateFlow(ProfileUiState())
+    val _uiState = MutableStateFlow(ProfileUiState())
 
     // Estado público de solo lectura para Compose.
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
