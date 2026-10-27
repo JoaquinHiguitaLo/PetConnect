@@ -1,5 +1,6 @@
 package com.example.petconnect.viewmodel
 
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.petconnect.data.model.Business
@@ -25,7 +26,18 @@ class BusinessViewModel(
 
     val uiState: StateFlow<BusinessUiState> =
         _uiState.asStateFlow()
-
+    /**
+     * Limpia el resultado de una operación anterior.
+     *
+     * Evita que un formulario nuevo interprete
+     * un registro anterior como si acabara de completarse.
+     */
+    fun limpiarResultadoOperacion() {
+        _uiState.value = _uiState.value.copy(
+            operationSuccess = false,
+            errorMessage = null
+        )
+    }
 
 /**
  * Registra un nuevo negocio en Firestore.
@@ -194,25 +206,35 @@ fun crearNegocio(business: Business) {
         }
     }
 
+
     /**
-     * Elimina un negocio existente.
+     * Elimina un negocio de Firestore.
      *
-     * Después de eliminarlo correctamente, también se elimina
-     * de la lista almacenada en el estado del ViewModel.
+     * Impide solicitudes simultáneas y comunica
+     * el resultado a la interfaz.
      */
     fun eliminarNegocio(business: Business) {
-        viewModelScope.launch {
 
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                errorMessage = null,
-                operationSuccess = false
-            )
+        // Evitamos operaciones duplicadas.
+        if (_uiState.value.isLoading) {
+            return
+        }
+
+        // Marcamos la operación como iniciada ANTES
+        // de lanzar la corrutina.
+        _uiState.value = _uiState.value.copy(
+            isLoading = true,
+            errorMessage = null,
+            operationSuccess = false
+        )
+
+        viewModelScope.launch {
 
             val result = businessRepository
                 .eliminarNegocio(business)
 
             result.onSuccess {
+
                 _uiState.value = _uiState.value.copy(
                     businesses = _uiState.value.businesses.filter {
                         it.id != business.id
@@ -222,7 +244,9 @@ fun crearNegocio(business: Business) {
                     operationSuccess = true,
                     errorMessage = null
                 )
+
             }.onFailure { error ->
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     operationSuccess = false,
@@ -232,5 +256,6 @@ fun crearNegocio(business: Business) {
             }
         }
     }
+
 
 }

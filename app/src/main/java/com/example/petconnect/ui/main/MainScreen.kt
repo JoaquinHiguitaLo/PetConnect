@@ -20,6 +20,12 @@ import com.example.petconnect.viewmodel.BusinessViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import com.example.petconnect.data.model.Business
+import androidx.compose.ui.platform.LocalContext
+import com.example.petconnect.utils.NetworkUtils
+import androidx.compose.runtime.produceState
+
+
 
 @Composable
 fun MainScreen(
@@ -27,8 +33,21 @@ fun MainScreen(
 ) {
     val petsViewModel: PetsViewModel = viewModel()
     val businessViewModel: BusinessViewModel = viewModel()
+    // ViewModel independiente para eliminar negocios.
+    // Evita mezclar el resultado con las consultas públicas.
+    val deleteBusinessViewModel: BusinessViewModel = viewModel(key = "delete_business")
+    val deleteBusinessUiState by deleteBusinessViewModel.uiState.collectAsState()
     val profileViewModel: ProfileViewModel = viewModel()
     val profileUiState by profileViewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val tieneConexion by produceState(
+        initialValue = NetworkUtils.tieneInternet(context),
+        key1 = context
+    ) {
+        NetworkUtils.observarConexion(context).collect { conectado ->
+            value = conectado
+        }
+    }
 
     LaunchedEffect(Unit) {
         profileViewModel.cargarUsuario()
@@ -110,6 +129,36 @@ fun MainScreen(
     var showBusinessDetail by remember {
         mutableStateOf(false)
     }
+    var showMyBusinesses by remember { mutableStateOf(false) }
+
+    var showAddBusiness by remember { mutableStateOf(false) }
+
+    // Controla la pantalla de detalle del prestador.
+    var showManageBusiness by remember {
+        mutableStateOf(false)
+    }
+    // Controla la apertura del formulario de edición.
+    var showEditBusiness by remember {
+        mutableStateOf(false)
+    }
+
+    // Almacena el negocio seleccionado.
+    var businessToManage by remember {
+        mutableStateOf<Business?>(null)
+    }
+    // Negocio cuya eliminación fue confirmada.
+    var businessPendingDeletion by remember {
+        mutableStateOf<Business?>(null)
+    }
+    var businessNetworkError by remember {
+        mutableStateOf<String?>(null)
+    }
+    // Mensaje temporal después de actualizar un negocio.
+    var businessSuccessMessage by remember {
+        mutableStateOf<String?>(null)
+    }
+
+
     var selectedPet by remember {
         mutableStateOf<Pet?>(null)
     }
@@ -134,13 +183,48 @@ fun MainScreen(
         mutableStateOf(false)
     }
 
+
+    // Observamos el resultado de la eliminación.
+
+    LaunchedEffect(
+        deleteBusinessUiState.isLoading,
+        deleteBusinessUiState.operationSuccess,
+        deleteBusinessUiState.errorMessage
+    ) {
+        if (
+            businessPendingDeletion != null &&
+            !deleteBusinessUiState.isLoading
+        ) {
+            when {
+                deleteBusinessUiState.operationSuccess -> {
+                    businessSuccessMessage =
+                        "¡Establecimiento eliminado correctamente!"
+
+                    businessPendingDeletion = null
+                    businessToManage = null
+                    showManageBusiness = false
+                    showMyBusinesses = true
+
+                    deleteBusinessViewModel.limpiarResultadoOperacion()
+                }
+
+                deleteBusinessUiState.errorMessage != null -> {
+                    businessPendingDeletion = null
+                    showManageBusiness = true
+                    businessSuccessMessage = null
+                }
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
 
             // El BottomNav solo aparece en las pantallas principales.
             // Las pantallas secundarias, como "Agregar mascota",
             // utilizan su propia flecha para regresar.
-            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory && !showBusinessDetail) {
+            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory &&
+                !showBusinessDetail && !showMyBusinesses && !showAddBusiness && !showManageBusiness && !showEditBusiness) {
                 BottomNav(
                     selectedItem = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -219,7 +303,149 @@ fun MainScreen(
                     showServicesByCategory = true
                 }
             )
-        }  else{
+        } else if (showAddBusiness) {
+
+            AddBusinessScreen(
+                modifier = Modifier.padding(innerPadding),
+
+                onBack = {
+                    showAddBusiness = false
+                    showMyBusinesses = true
+                },
+
+                onCreated = {
+                    showAddBusiness = false
+                    showMyBusinesses = true
+                }
+            )
+        } else if (showEditBusiness && businessToManage != null) {
+
+            // ==========================================
+            // EDITAR NEGOCIO DEL PRESTADOR
+            // ==========================================
+
+            EditBusinessScreen(
+                business = businessToManage!!,
+                modifier = Modifier.padding(innerPadding),
+
+                onBack = {
+                    // Cancela la edición y regresa al detalle.
+                    showEditBusiness = false
+                    showManageBusiness = true
+                },
+
+                onUpdated = {
+                    // La actualización fue confirmada por Firestore.
+                    businessSuccessMessage =
+                        "¡Negocio actualizado correctamente!"
+                    // La actualización terminó correctamente.
+                    showEditBusiness = false
+
+                    // Regresamos al listado para consultar
+                    // nuevamente los datos desde Firestore.
+                    businessToManage = null
+                    showManageBusiness = false
+                    showMyBusinesses = true
+                }
+            )
+        } else if (showManageBusiness && businessToManage != null) {
+
+            // ==========================================
+            // DETALLE DEL NEGOCIO DEL PRESTADOR
+            // ==========================================
+
+            ManageBusinessScreen(
+                business = businessToManage!!,
+                modifier = Modifier.padding(innerPadding),
+
+                isDeleting = businessPendingDeletion != null,
+                isConnected = tieneConexion,
+
+                deleteError = businessNetworkError
+                    ?: deleteBusinessUiState.errorMessage,
+
+                onBack = {
+                    showManageBusiness = false
+                    businessToManage = null
+                    showMyBusinesses = true
+                },
+                onEdit = { business ->
+
+                    // Guardamos el negocio que queremos editar.
+                    businessToManage = business
+
+                    // Cerramos el detalle.
+                    showManageBusiness = false
+
+                    // Abrimos el formulario de edición.
+                    showEditBusiness = true
+                },
+
+
+                onDelete = { business ->
+
+                    // Solo permitimos una eliminación a la vez.
+                    if (
+                        businessPendingDeletion == null &&
+                        !deleteBusinessUiState.isLoading
+                    ) {
+
+                        // Limpiamos el error anterior.
+                        businessNetworkError = null
+
+                        // Comprobamos la conectividad antes de eliminar.
+                        if (!NetworkUtils.tieneInternet(context)) {
+
+                            businessNetworkError =
+                                "No tienes conexión a Internet. " +
+                                        "Conéctate para eliminar este establecimiento."
+
+                        } else {
+
+                            // Limpiamos resultados anteriores.
+                            deleteBusinessViewModel.limpiarResultadoOperacion()
+
+                            // Iniciamos la eliminación en Firestore.
+                            deleteBusinessViewModel.eliminarNegocio(business)
+
+                            // Identificamos el negocio en proceso.
+                            businessPendingDeletion = business
+                        }
+                    }
+
+        }
+
+
+
+            )
+        } else if (showMyBusinesses) {
+
+            MyBusinessesScreen(
+                modifier = Modifier.padding(innerPadding),
+
+                onBack = {
+                    showMyBusinesses = false
+                },
+
+                onAddBusiness = {
+                    showMyBusinesses = false
+                    showAddBusiness = true
+                },
+
+                onBusinessSelected = { business ->
+                    businessToManage = business
+                    showMyBusinesses = false
+                    showManageBusiness = true
+                },
+
+                successMessage = businessSuccessMessage,
+
+                onMessageShown = {
+                    businessSuccessMessage = null
+                }
+            )
+
+        } else  {
 
             // ====================================================
             // PANTALLAS PRINCIPALES
@@ -308,7 +534,13 @@ fun MainScreen(
                     // del BottomNav.
                     onPets = {
                         selectedItem = 2
+                    },
+
+                    onBusinesses = {
+                        showMyBusinesses = true
                     }
+
+
                 )
             }
         }

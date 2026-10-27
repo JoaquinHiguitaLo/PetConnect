@@ -207,14 +207,48 @@ suspend fun obtenerNegocioPorId(
      * Utiliza el ID del negocio para modificar el documento
      * correspondiente en Firestore.
      */
+
+    /**
+     * Actualiza los datos comerciales de un negocio.
+     *
+     * No modifica:
+     * - ID del documento.
+     * - Propietario (prestadorId).
+     * - Estado de verificación.
+     * - Calificación.
+     *
+     * Firestore verifica que el usuario autenticado
+     * tenga autorización para modificar el negocio.
+     */
     suspend fun actualizarNegocio(
         business: Business
     ): Result<Unit> {
         return try {
 
+            // Validamos que el negocio tenga un ID.
+            if (business.id.isBlank()) {
+                return Result.failure(
+                    IllegalArgumentException(
+                        "El negocio no tiene un identificador válido."
+                    )
+                )
+            }
+
+            // Solo enviamos los campos editables.
+            val datosActualizados = mapOf(
+                "nombre" to business.nombre.trim(),
+                "categoria" to business.categoria,
+                "descripcion" to business.descripcion.trim(),
+                "direccion" to business.direccion.trim(),
+                "telefono" to business.telefono.trim(),
+                "latitud" to business.latitud,
+                "longitud" to business.longitud,
+                "imagen" to business.imagen
+            )
+
             db.collection("negocios")
                 .document(business.id)
-                .set(business)
+                .update(datosActualizados)
                 .await()
 
             Result.success(Unit)
@@ -223,6 +257,7 @@ suspend fun obtenerNegocioPorId(
             Result.failure(e)
         }
     }
+
 
     /**
      * Elimina un negocio de Firestore.

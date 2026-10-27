@@ -116,7 +116,7 @@ class RegisterViewModel(
                         nombreCompleto = "",
                         correo = firebaseUser.email ?: "",
                         telefono = "",
-                        foto = null
+                        foto = null,
                     )
 
                     // Guardamos el perfil utilizando el mismo UID

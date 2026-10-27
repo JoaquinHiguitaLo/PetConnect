@@ -37,6 +37,7 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onPersonalInfo: () -> Unit,
     onPets: () -> Unit,
+    onBusinesses: () -> Unit,
     viewModel: ProfileViewModel = viewModel()
 ) {
     // Observamos el estado del perfil.
@@ -289,6 +290,19 @@ fun ProfileScreen(
                     description = "Administra la información de tus mascotas",
                     onClick = onPets
                 )
+                // Solo los prestadores pueden acceder
+                // a la administración de sus negocios.
+                if (uiState.user?.rol == "PRESTADOR") {
+
+                    ProfileDivider()
+
+                    ProfileOption(
+                        icon = "🏪",
+                        title = "Mis negocios",
+                        description = "Administra tus establecimientos",
+                        onClick = onBusinesses
+                    )
+                }
 
                 ProfileDivider()
 
