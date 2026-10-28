@@ -18,14 +18,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.viewmodel.PetsViewModel
 import com.example.petconnect.viewmodel.BusinessViewModel
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import com.example.petconnect.data.model.Business
 import androidx.compose.ui.platform.LocalContext
 import com.example.petconnect.utils.NetworkUtils
 import androidx.compose.runtime.produceState
-
-
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.camera.CameraPosition
+import com.example.petconnect.ui.address.MyAddressesScreen
+import com.example.petconnect.ui.address.AddAddressScreen
+import com.example.petconnect.viewmodel.AddressViewModel
 
 @Composable
 fun MainScreen(
@@ -125,8 +126,40 @@ fun MainScreen(
     var selectedCategoryId by remember { mutableStateOf("") }
 
     var selectedBusinessId by remember { mutableStateOf("") }
-
+    // Conserva la ubicación mientras navegamos
+    // entre el mapa y el detalle de negocios.
+    var ubicacionUsuarioMapa by remember {
+        mutableStateOf<LatLng?>(null)
+    }
+    // Conserva la posición y el zoom del mapa.
+    var posicionCamaraMapa by remember {
+        mutableStateOf<CameraPosition?>(null)
+    }
     var showBusinessDetail by remember {
+        mutableStateOf(false)
+    }
+    // Indica si el detalle del negocio fue abierto desde el mapa.
+    var businessDetailFromMap by remember {
+        mutableStateOf(false)
+    }
+    var businessDetailFromHome by remember {
+        mutableStateOf(false)
+    }
+    // Controla la pantalla de todos los servicios destacados.
+    var showFeaturedServices by remember {
+        mutableStateOf(false)
+    }
+
+    // Identifica si abrimos un detalle desde el listado
+    // completo de servicios destacados.
+    var businessDetailFromFeatured by remember {
+        mutableStateOf(false)
+    }
+    var showMyAddresses by remember {
+        mutableStateOf(false)
+    }
+    // Controla la pantalla de registro de direcciones.
+    var showAddAddress by remember {
         mutableStateOf(false)
     }
     var showMyBusinesses by remember { mutableStateOf(false) }
@@ -157,7 +190,13 @@ fun MainScreen(
     var businessSuccessMessage by remember {
         mutableStateOf<String?>(null)
     }
+    // ViewModel compartido para las direcciones del usuario.
+    val addressViewModel: AddressViewModel = viewModel(
+        key = "my_addresses"
+    )
 
+// Observamos el estado de las direcciones.
+    val addressUiState by addressViewModel.uiState.collectAsState()
 
     var selectedPet by remember {
         mutableStateOf<Pet?>(null)
@@ -182,7 +221,23 @@ fun MainScreen(
     var showDeleteDialog by remember {
         mutableStateOf(false)
     }
+    // Consultamos las direcciones cuando se muestra Inicio.
+    LaunchedEffect(selectedItem, showMyAddresses, showAddAddress) {
 
+        if (
+            selectedItem == 0 &&
+            !showMyAddresses &&
+            !showAddAddress
+        ) {
+            addressViewModel.cargarDirecciones()
+            addressViewModel.cargarDireccionActiva()
+        }
+    }
+    // Buscamos la dirección que corresponde al ID
+    // seleccionado en Firestore.
+    val direccionActiva = addressUiState.direcciones.find { direccion ->
+        direccion.id == addressUiState.direccionActivaId
+    }
 
     // Observamos el resultado de la eliminación.
 
@@ -224,7 +279,8 @@ fun MainScreen(
             // Las pantallas secundarias, como "Agregar mascota",
             // utilizan su propia flecha para regresar.
             if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory &&
-                !showBusinessDetail && !showMyBusinesses && !showAddBusiness && !showManageBusiness && !showEditBusiness) {
+                !showBusinessDetail && !showMyBusinesses && !showAddBusiness && !showManageBusiness
+                && !showEditBusiness && !showMyAddresses && !showAddAddress && !showFeaturedServices) {
                 BottomNav(
                     selectedItem = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -265,17 +321,71 @@ fun MainScreen(
                     selectedPet = null
                 }
             )
+        } else if (showFeaturedServices && !showBusinessDetail) {
 
+            FeaturedServicesScreen(
+                modifier = Modifier.padding(innerPadding),
+                direccionActiva = direccionActiva,
 
-        } else if(showBusinessDetail) {
+                onBack = {
+                    showFeaturedServices = false
+                    selectedItem = 0
+                },
+
+                onBusinessSelected = { businessId ->
+                    selectedBusinessId = businessId
+
+                    businessDetailFromMap = false
+                    businessDetailFromHome = false
+                    businessDetailFromFeatured = true
+
+                    // Conservamos showFeaturedServices en true
+                    // para regresar al listado después.
+                    showBusinessDetail = true
+                }
+            )
+
+        } else if (showBusinessDetail) {
+
             BusinessDetailScreen(
                 businessId = selectedBusinessId,
+
+
                 onBack = {
+
                     showBusinessDetail = false
-                    showServicesByCategory = true
+
+                    when {
+
+                        businessDetailFromFeatured -> {
+                            // Regresamos al listado completo.
+                            showFeaturedServices = true
+                            selectedItem = 0
+                        }
+
+                        businessDetailFromMap -> {
+                            selectedItem = 1
+                        }
+
+                        businessDetailFromHome -> {
+                            selectedItem = 0
+                        }
+
+                        else -> {
+                            showServicesByCategory = true
+                        }
+                    }
+
+                    // Limpiamos el origen de navegación.
+                    businessDetailFromMap = false
+                    businessDetailFromHome = false
+                    businessDetailFromFeatured = false
                 },
+
+
                 viewModel = businessViewModel
             )
+
 
 
         } else if (showServicesByCategory) {
@@ -285,11 +395,18 @@ fun MainScreen(
                     showServicesByCategory = false
                     showCategories = true
                 },
+
                 onBusinessSelected = { businessId ->
                     selectedBusinessId = businessId
+
+                    // El negocio fue abierto desde Categorías.
+                    businessDetailFromMap = false
+                    businessDetailFromHome = false
+
                     showServicesByCategory = false
                     showBusinessDetail = true
                 },
+
                 viewModel = businessViewModel
             )
         } else if (showCategories) {
@@ -445,7 +562,47 @@ fun MainScreen(
                 }
             )
 
-        } else  {
+        }
+
+        else if (showAddAddress) {
+
+            AddAddressScreen(
+                modifier = Modifier.padding(innerPadding),
+
+                onBack = {
+                    showAddAddress = false
+                    showMyAddresses = true
+                },
+
+                onSelectLocation = {
+                    // El selector MapLibre se administra
+                    // dentro de AddAddressScreen.
+                },
+
+                onSaved = {
+                    // Firestore confirmó el registro.
+                    showAddAddress = false
+                    showMyAddresses = true
+                }
+            )
+        }
+        else if (showMyAddresses) {
+
+            MyAddressesScreen(
+                modifier = Modifier.padding(innerPadding),
+
+                onBack = {
+                    showMyAddresses = false
+                    selectedItem = 0
+                },
+
+                onAddAddress = {
+                    showMyAddresses = false
+                    showAddAddress = true
+                }
+            )
+
+    } else  {
 
             // ====================================================
             // PANTALLAS PRINCIPALES
@@ -467,17 +624,62 @@ fun MainScreen(
                         showCategories = false
                         showServicesByCategory = true
                     },
+                    direccionActiva = direccionActiva,
+                    onAddressesClick = {
+                        showMyAddresses = true
+                    },
+                    onBusinessSelected = { businessId ->
+
+                        selectedBusinessId = businessId
+
+                        // El usuario abrió el negocio desde Inicio,
+                        // no desde el mapa ni desde categorías.
+                        businessDetailFromMap = false
+                        businessDetailFromHome = true
+                        showServicesByCategory = false
+                        showBusinessDetail = true
+                    },
+                    onViewAllFeatured = {
+                        showFeaturedServices = true
+                    },
                     nombreUsuario = nombreUsuario,
                     modifier = Modifier.padding(innerPadding)
                 )
+
 
                 // ------------------------------------------------
                 // MAPA
                 // ------------------------------------------------
 
                 1 -> MapScreen(
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier.padding(innerPadding),
+
+                    ubicacionGuardada = ubicacionUsuarioMapa,
+
+                    onUbicacionActualizada = { ubicacion ->
+                        ubicacionUsuarioMapa = ubicacion
+                    },
+
+                    posicionCamaraGuardada = posicionCamaraMapa,
+
+                    onPosicionCamaraActualizada = { posicion ->
+                        posicionCamaraMapa = posicion
+                    },
+
+
+                    onBusinessSelected = { businessId ->
+
+                        selectedBusinessId = businessId
+
+                        // El negocio fue abierto desde Mapa.
+                        businessDetailFromMap = true
+                        businessDetailFromHome = false
+
+                        showBusinessDetail = true
+                    }
+
                 )
+
 
                 // ------------------------------------------------
                 // MASCOTAS

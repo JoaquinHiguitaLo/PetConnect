@@ -34,7 +34,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-
+import com.example.petconnect.data.model.UserAddress
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import com.example.petconnect.viewmodel.BusinessViewModel
+import com.example.petconnect.data.model.Business
+import android.location.Location
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -43,10 +51,34 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onViewAllCategories: () -> Unit,
     onCategorySelected: (String) -> Unit,
-    nombreUsuario: String
+    nombreUsuario: String,
+    onAddressesClick: () -> Unit = {},
+    direccionActiva: UserAddress? = null,
+    onBusinessSelected: (String) -> Unit = {},
+    onViewAllFeatured: () -> Unit = {}
 ) {
     var textoBusqueda by remember { mutableStateOf("") }
 
+    // ViewModel exclusivo para los servicios destacados de Inicio.
+    val homeBusinessViewModel: BusinessViewModel = viewModel(
+        key = "home_featured_businesses"
+    )
+
+    val homeBusinessUiState by homeBusinessViewModel.uiState.collectAsState()
+
+    // Consultamos los establecimientos aprobados.
+    LaunchedEffect(homeBusinessViewModel) {
+        homeBusinessViewModel.cargarNegociosAprobados()
+    }
+
+    // Los servicios destacados se ordenan por calificación.
+    val serviciosDestacados = homeBusinessUiState.businesses
+        .filter { business ->
+            business.estadoVerificacion == "APROBADO"
+        }
+        .sortedByDescending { business ->
+            business.calificacion
+        }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -86,11 +118,15 @@ fun HomeScreen(
 
                 // Información de ubicación
                 Column(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            onAddressesClick()
+                        }
                 ) {
 
                     Text(
-                        text = "UBICACIÓN ACTUAL",
+                        text = "MI UBICACIÓN ▾",
                         color = MaterialTheme.colorScheme.primaryContainer,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium
@@ -98,12 +134,33 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Text(
-                        text = "📍 Antioquia, Medellín",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+
+                    Column {
+
+                        Text(
+                            text = if (direccionActiva != null) {
+                                "📍 ${direccionActiva.nombre} · ${direccionActiva.ciudad}"
+                            } else {
+                                "📍 Seleccionar dirección"
+                            },
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        if (direccionActiva != null) {
+
+                            Spacer(modifier = Modifier.height(3.dp))
+
+                            Text(
+                                text = direccionActiva.direccion,
+                                color = Color.White.copy(alpha = 0.85f),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1
+                            )
+                        }
+                    }
+
                 }
 
                 // Botón de notificaciones
@@ -269,17 +326,51 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold
                     )
 
-                    Text(
-                        text = "Ver todos",
-                        modifier = Modifier.clickable {
-                            onViewAllCategories()
-                        },
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
-                    )
+                    TextButton(
+                        onClick = onViewAllFeatured
+                    ){
+                        Text(
+                            text = "Ver todos",
+                            modifier = Modifier.clickable {
+                                onViewAllCategories()
+                            },
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium)
+                    }
+
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
+
+
+            if (homeBusinessUiState.isLoading) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+            } else if (homeBusinessUiState.errorMessage != null) {
+
+                Text(
+                    text = "No se pudieron cargar los servicios destacados.",
+                    color = MaterialTheme.colorScheme.error
+                )
+
+            } else if (serviciosDestacados.isEmpty()) {
+
+                Text(
+                    text = "Todavía no hay servicios destacados disponibles.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+            } else {
 
                 Row(
                     modifier = Modifier
@@ -288,27 +379,36 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
-                    ServiceCard(
-                        emoji = "🏥",
-                        name = "Clínica VetVida",
-                        category = "Veterinaria",
-                        distance = "0.8 km",
-                        rating = "4.9",
-                        reviews = "128"
-                    )
+                    serviciosDestacados.forEach { negocio ->
 
-                    ServiceCard(
-                        emoji = "✂️",
-                        name = "PeloPet Spa",
-                        category = "Peluquería",
-                        distance = "1.2 km",
-                        rating = "4.7",
-                        reviews = "84"
-                    )
+                        ServiceCard(
+                            emoji = when (
+                                negocio.categoria.trim().lowercase()
+                            ) {
+                                "veterinaria", "veterinarias" -> "🏥"
+                                "peluqueria", "peluquería", "baño" -> "✂️"
+                                "paseador", "paseadores" -> "🐕"
+                                "guarderia", "guardería" -> "🏨"
+                                else -> "🐾"
+                            },
+                            name = negocio.nombre,
+                            category = negocio.categoria,
+                            distance = distanciaDesdeDireccion(
+                                direccion = direccionActiva,
+                                negocio = negocio
+                            ),
+                            rating = negocio.calificacion.toString(),
+                            onClick = {
+                                onBusinessSelected(negocio.id)
+                            }
+                        )
+                    }
                 }
+            }
 
 
-                // ========================================================
+
+            // ========================================================
                 // RECOMENDACIONES
                 // ========================================================
 
@@ -432,10 +532,11 @@ private fun ServiceCard(
     category: String,
     distance: String,
     rating: String,
-    reviews: String
+    onClick: () -> Unit
 ) {
 
     Card(
+        onClick = onClick,
         modifier = Modifier.width(250.dp),
         shape = RoundedCornerShape(18.dp)
     ) {
@@ -476,7 +577,7 @@ private fun ServiceCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "⭐ $rating ($reviews)",
+                    text = "⭐ $rating",
                     color = MaterialTheme.colorScheme.secondary,
                     fontWeight = FontWeight.Medium
                 )
@@ -676,5 +777,52 @@ private fun NavigationItem(
                         FontWeight.Normal
             )
         }
+    }
+}
+
+
+/**
+ * Calcula la distancia en línea recta
+ * desde la dirección activa hasta un negocio.
+ */
+private fun distanciaDesdeDireccion(
+    direccion: UserAddress?,
+    negocio: Business
+): String {
+
+    if (direccion == null) {
+        return "Sin ubicación"
+    }
+
+    if (
+        !negocio.latitud.isFinite() ||
+        !negocio.longitud.isFinite() ||
+        negocio.latitud !in -90.0..90.0 ||
+        negocio.longitud !in -180.0..180.0 ||
+        (negocio.latitud == 0.0 && negocio.longitud == 0.0)
+    ) {
+        return "Sin distancia"
+    }
+
+    val resultado = FloatArray(1)
+
+    Location.distanceBetween(
+        direccion.latitud,
+        direccion.longitud,
+        negocio.latitud,
+        negocio.longitud,
+        resultado
+    )
+
+    val metros = resultado[0]
+
+    return if (metros < 1000f) {
+        "${metros.toInt()} m"
+    } else {
+        String.format(
+            Locale("es", "CO"),
+            "%.1f km",
+            metros / 1000f
+        )
     }
 }

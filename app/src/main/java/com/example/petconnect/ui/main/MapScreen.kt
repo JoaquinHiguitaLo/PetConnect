@@ -19,17 +19,266 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.petconnect.viewmodel.BusinessViewModel
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import java.text.Normalizer
+import java.util.Locale
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.example.petconnect.utils.LocationUtils
+import org.maplibre.android.geometry.LatLng
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import android.location.Location
+import org.maplibre.android.camera.CameraPosition
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.text.style.TextAlign
+import com.example.petconnect.data.model.Category
+import androidx.compose.ui.text.style.TextOverflow
 @Composable
 fun MapScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    ubicacionGuardada: LatLng? = null,
+    onUbicacionActualizada: (LatLng) -> Unit = {},
+    posicionCamaraGuardada: CameraPosition? = null,
+    onPosicionCamaraActualizada: (CameraPosition) -> Unit = {},
+    onBusinessSelected: (String) -> Unit = {}
 ) {
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Coordenadas a las que queremos mover el mapa.
+    var ubicacionObjetivo by remember(ubicacionGuardada) {
+        mutableStateOf(ubicacionGuardada)
+    }
+    var solicitudCentrado by remember {
+        mutableIntStateOf(0)
+    }
+    // Mensaje que aparecerá si el usuario rechaza el permiso.
+    var mensajeUbicacion by remember {
+        mutableStateOf<String?>(null)
+    }
+
+
+    fun buscarMiUbicacion() {
+
+        // Evitamos solicitar la ubicación sin permiso.
+        if (!LocationUtils.tienePermiso(context)) {
+            mensajeUbicacion = "No tienes permisos de ubicación."
+            return
+        }
+
+        mensajeUbicacion = "Obteniendo ubicación actual..."
+
+        scope.launch {
+
+            // Solicitamos una posición actual al dispositivo.
+            val ubicacion = LocationUtils.obtenerUbicacionActual(
+                context
+            )
+
+            if (ubicacion != null) {
+
+                val latitud = ubicacion.latitude
+                val longitud = ubicacion.longitude
+
+                // Actualizamos las coordenadas objetivo.
+                val nuevaUbicacion = LatLng(
+                    latitud,
+                    longitud
+                )
+
+                ubicacionObjetivo = nuevaUbicacion
+
+                // También la guardamos en MainScreen.
+                onUbicacionActualizada(nuevaUbicacion)
+                solicitudCentrado++
+                // Mostramos las coordenadas para comprobarlas.
+                mensajeUbicacion =
+                    "Ubicación: $latitud, $longitud"
+
+            } else {
+
+                mensajeUbicacion =
+                    "No se pudo obtener una ubicación actual. " +
+                            "Verifica el GPS del emulador."
+            }
+        }
+    }
+
+
+
+
+    // Comprueba si tenemos ubicación precisa o aproximada.
+    fun permisoUbicacionConcedido(): Boolean {
+        val permisoPreciso = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val permisoAproximado = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        return permisoPreciso || permisoAproximado
+    }
+
+    // Solicitud de permisos mediante el diálogo de Android.
+    val solicitarPermisosUbicacion = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permisos ->
+
+        val preciso = permisos[
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ] == true
+
+        val aproximado = permisos[
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ] == true
+
+        if (preciso || aproximado) {
+
+            // El usuario autorizó la ubicación.
+            buscarMiUbicacion()
+
+        } else {
+
+            mensajeUbicacion =
+                "No se concedió el permiso de ubicación."
+        }
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFF9F8F4))
     ) {
+        // ViewModel exclusivo para los negocios del mapa.
+        // No interfiere con las consultas de otras pantallas.
+        val mapBusinessViewModel: BusinessViewModel = viewModel(
+            key = "map_businesses"
+        )
+
+        // Observamos los establecimientos obtenidos de Firestore.
+        val mapBusinessUiState by mapBusinessViewModel.uiState.collectAsState()
+
+        // Consultamos los negocios aprobados al entrar al mapa.
+        LaunchedEffect(Unit) {
+            mapBusinessViewModel.cargarNegociosAprobados()
+        }
+
+        // Lista disponible para dibujar marcadores posteriormente.
+        val negociosAprobados = mapBusinessUiState.businesses
+
+        // Categoría activa en el mapa.
+        var categoriaSeleccionada by remember {
+            mutableStateOf("Todos")
+        }
+        // Texto que escribe el usuario en el buscador.
+        var textoBusqueda by remember {
+            mutableStateOf("")
+        }
+        // Controla cómo se organizan las tarjetas.
+        var ordenSeleccionado by remember {
+            mutableStateOf("Cercanía")
+        }
+
+
+    // Filtramos los establecimientos según la categoría seleccionada.
+
+        val negociosFiltrados = negociosAprobados.filter { business ->
+
+            val categoriaNegocio =
+                normalizarCategoria(business.categoria)
+
+            val coincideCategoria = when (categoriaSeleccionada) {
+
+                "Todos" -> true
+
+                "Veterinaria" ->
+                    categoriaNegocio in listOf(
+                        "veterinaria",
+                        "veterinarias"
+                    )
+
+                "Peluquería" ->
+                    categoriaNegocio in listOf(
+                        "peluqueria",
+                        "peluquerias",
+                        "bano",
+                        "bano y peluqueria"
+                    )
+
+                "Paseador" ->
+                    categoriaNegocio in listOf(
+                        "paseador",
+                        "paseadores",
+                        "paseos"
+                    )
+
+                "Guardería" ->
+                    categoriaNegocio in listOf(
+                        "guarderia",
+                        "guarderias"
+                    )
+
+                else -> false
+            }
+
+            // Normalizamos para ignorar mayúsculas y tildes.
+            val busqueda = normalizarCategoria(textoBusqueda)
+
+            val coincideBusqueda =
+                busqueda.isBlank() ||
+                        normalizarCategoria(business.nombre).contains(busqueda)
+
+            // Debe cumplir ambas condiciones.
+            coincideCategoria && coincideBusqueda
+        }
+
+        // Ordenamos los negocios sin modificar los resultados
+        // originales de Firestore.
+        val negociosOrdenados = when (ordenSeleccionado) {
+
+            "Cercanía" -> {
+
+                if (ubicacionObjetivo != null) {
+
+                    negociosFiltrados.sortedBy { business ->
+                        obtenerDistanciaEnMetros(
+                            ubicacionUsuario = ubicacionObjetivo,
+                            latitudNegocio = business.latitud,
+                            longitudNegocio = business.longitud
+                        )
+                    }
+
+                } else {
+                    // Sin ubicación no podemos ordenar por distancia.
+                    negociosFiltrados
+                }
+            }
+
+            "Calificación" -> {
+                negociosFiltrados.sortedByDescending {
+                    it.calificacion
+                }
+            }
+
+            else -> negociosFiltrados
+        }
+
 
         // ============================================================
         // BUSCADOR Y FILTROS
@@ -54,8 +303,10 @@ fun MapScreen(
             ) {
 
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = textoBusqueda,
+                    onValueChange = { nuevoTexto ->
+                        textoBusqueda = nuevoTexto
+                    },
                     placeholder = {
                         Text(
                             text = "Buscar en el mapa...",
@@ -94,6 +345,7 @@ fun MapScreen(
                 }
             }
 
+
             Spacer(modifier = Modifier.height(12.dp))
 
             // ========================================================
@@ -107,156 +359,102 @@ fun MapScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
 
+
                 MapCategoryChip(
                     text = "Todos",
-                    selected = true
+                    selected = categoriaSeleccionada == "Todos",
+                    onClick = {
+                        categoriaSeleccionada = "Todos"
+                    }
                 )
 
                 MapCategoryChip(
                     text = "🏥 Veterinarias",
-                    selected = false
+                    selected = categoriaSeleccionada == "Veterinaria",
+                    onClick = {
+                        categoriaSeleccionada = "Veterinaria"
+                    }
                 )
 
                 MapCategoryChip(
                     text = "✂️ Peluquerías",
-                    selected = false
+                    selected = categoriaSeleccionada == "Peluquería",
+                    onClick = {
+                        categoriaSeleccionada = "Peluquería"
+                    }
                 )
 
                 MapCategoryChip(
                     text = "🐕 Paseadores",
-                    selected = false
+                    selected = categoriaSeleccionada == "Paseador",
+                    onClick = {
+                        categoriaSeleccionada = "Paseador"
+                    }
                 )
 
                 MapCategoryChip(
                     text = "🏨 Guarderías",
-                    selected = false
+                    selected = categoriaSeleccionada == "Guardería",
+                    onClick = {
+                        categoriaSeleccionada = "Guardería"
+                    }
                 )
+
             }
         }
 
+
         // ============================================================
-        // MAPA
+        // MAPA REAL - MAPLIBRE
         // ============================================================
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Color(0xFFE4F1EE))
         ) {
 
-            // Calles horizontales
+            // Mapa interactivo centrado inicialmente en Medellín.
+            PetConnectMap(
+                negocios = negociosFiltrados,
+                ubicacionObjetivo = ubicacionObjetivo,
+                posicionCamaraGuardada = posicionCamaraGuardada,
+                onPosicionCamaraActualizada = onPosicionCamaraActualizada,
+                solicitudCentrado = solicitudCentrado,
+                modifier = Modifier.fillMaxSize(),
+                onBusinessSelected = { businessId ->
+                    onBusinessSelected(businessId)
+                }
+            )
+
+            // Botón visual de ubicación.
+            // Conectaremos su funcionalidad posteriormente.
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(22.dp)
-                    .align(Alignment.Center)
-                    .background(Color.White)
-            )
+                    .clickable {
+                        mensajeUbicacion = null
 
-            // Calle vertical
-            Box(
-                modifier = Modifier
-                    .width(20.dp)
-                    .fillMaxHeight()
-                    .align(Alignment.Center)
-                    .background(Color.White)
-            )
+                        if (permisoUbicacionConcedido()) {
 
-            // Bloques simulando edificios
-            MapBlock(
-                modifier = Modifier
-                    .width(130.dp)
-                    .height(105.dp)
-                    .align(Alignment.TopStart)
-                    .offset(x = 20.dp, y = 20.dp)
-            )
+                            buscarMiUbicacion()
 
-            MapBlock(
-                modifier = Modifier
-                    .width(140.dp)
-                    .height(105.dp)
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-20).dp, y = 20.dp)
-            )
-
-            MapBlock(
-                modifier = Modifier
-                    .width(130.dp)
-                    .height(110.dp)
-                    .align(Alignment.CenterStart)
-                    .offset(x = 20.dp, y = 45.dp)
-            )
-
-            MapBlock(
-                modifier = Modifier
-                    .width(140.dp)
-                    .height(110.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = (-20).dp, y = 45.dp)
-            )
-
-            MapBlock(
-                modifier = Modifier
-                    .width(220.dp)
-                    .height(115.dp)
-                    .align(Alignment.BottomCenter)
-                    .offset(y = (-20).dp)
-            )
-
-            // ========================================================
-            // MARCADORES
-            // ========================================================
-
-            MapMarker(
-                emoji = "🏥",
-                color = Color(0xFF227A76),
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = 85.dp, y = 95.dp)
-            )
-
-            MapMarker(
-                emoji = "🏥",
-                color = Color(0xFF227A76),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(x = 10.dp, y = 60.dp)
-            )
-
-            MapMarker(
-                emoji = "✂️",
-                color = Color(0xFFD78C00),
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .offset(x = 80.dp, y = 20.dp)
-            )
-
-            MapMarker(
-                emoji = "🐕",
-                color = Color(0xFF3F925B),
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .offset(x = 145.dp, y = 50.dp)
-            )
-
-            MapMarker(
-                emoji = "⭐",
-                color = Color(0xFF7350B5),
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .offset(x = (-35).dp, y = 100.dp)
-            )
-
-            // Ubicación del usuario
-            Box(
-                modifier = Modifier
+                        } else {
+                            solicitarPermisosUbicacion.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        }
+                    }
                     .align(Alignment.BottomEnd)
                     .padding(20.dp)
                     .size(56.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color.White),
+
                 contentAlignment = Alignment.Center
+
             ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
@@ -264,8 +462,28 @@ fun MapScreen(
                     tint = Color(0xFF227A76),
                     modifier = Modifier.size(30.dp)
                 )
+                mensajeUbicacion?.let { mensaje ->
+
+                    Text(
+                        text = mensaje,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(12.dp)
+                            .background(
+                                Color(0xFF227A76),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .padding(
+                                horizontal = 12.dp,
+                                vertical = 8.dp
+                            )
+                    )
+                }
             }
         }
+
 
         // ============================================================
         // SERVICIOS CERCANOS
@@ -297,44 +515,212 @@ fun MapScreen(
                 Spacer(modifier = Modifier.width(6.dp))
 
                 Text(
-                    text = "6 encontrados",
+                    text = if (mapBusinessUiState.isLoading) {
+                        "Cargando..."
+                    } else if (mapBusinessUiState.errorMessage != null) {
+                        "Error al cargar"
+                    } else {
+                        "${negociosFiltrados.size} encontrados"
+                    },
                     color = Color(0xFF777777),
                     fontSize = 14.sp
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Text(
-                    text = "Ordenar ▾",
-                    color = Color(0xFF227A76),
-                    fontSize = 14.sp
-                )
+
+                var mostrarMenuOrden by remember {
+                    mutableStateOf(false)
+                }
+
+                Box {
+
+                    TextButton(
+                        onClick = {
+                            mostrarMenuOrden = true
+                        }
+                    ) {
+                        Text(
+                            text = "Ordenar▾",
+                            color = Color(0xFF227A76),
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = mostrarMenuOrden,
+                        onDismissRequest = {
+                            mostrarMenuOrden = false
+                        }
+                    ) {
+
+                        DropdownMenuItem(
+                            text = { Text("Más cercanos") },
+                            onClick = {
+                                ordenSeleccionado = "Cercanía"
+                                mostrarMenuOrden = false
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("Mejor calificados") },
+                            onClick = {
+                                ordenSeleccionado = "Calificación"
+                                mostrarMenuOrden = false
+                            }
+                        )
+                    }
+                }
+
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
 
-                NearbyServiceCard(
-                    emoji = "🏥",
-                    name = "Clínica VetVida",
-                    distance = "0.8 km",
-                    rating = "4.9",
-                    modifier = Modifier.weight(1f)
+            if (mapBusinessUiState.isLoading) {
+
+                Text(
+                    text = "Cargando establecimientos...",
+                    color = Color(0xFF777777),
+                    fontSize = 14.sp
                 )
 
-                NearbyServiceCard(
-                    emoji = "🐕",
-                    name = "Carlos el Paseador",
-                    distance = "0.4 km",
-                    rating = "5",
-                    modifier = Modifier.weight(1f)
+            } else if (mapBusinessUiState.errorMessage != null) {
+
+                Text(
+                    text = "No se pudieron cargar los establecimientos.",
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 14.sp
                 )
+
+
+            } else if (negociosFiltrados.isEmpty()) {
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+
+                    Text(
+                        text = "🔎",
+                        fontSize = 26.sp
+                    )
+
+                    Text(
+                        text = "No encontramos establecimientos",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF227A76)
+                    )
+
+                    Text(
+                        text = if (textoBusqueda.isNotBlank()) {
+                            "Prueba con otro nombre o cambia la categoría."
+                        } else {
+                            "Todavía no hay establecimientos en esta categoría."
+                        },
+                        fontSize = 12.sp,
+                        color = Color(0xFF777777),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+        } else {
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+
+                    negociosOrdenados.forEach { business ->
+
+
+                        NearbyServiceCard(
+                            emoji = obtenerEmojiNegocio(business.categoria),
+                            name = business.nombre,
+                            category = business.categoria,
+                            // Distancia calculada desde el usuario.
+                            distance = calcularDistanciaNegocio(
+                                ubicacionUsuario = ubicacionObjetivo,
+                                latitudNegocio = business.latitud,
+                                longitudNegocio = business.longitud
+                            ),
+
+                            rating = business.calificacion.toString(),
+                            modifier = Modifier.width(190.dp),
+
+                            onClick = {
+                                onBusinessSelected(business.id)
+                            }
+                        )
+
+                    }
+                }
             }
+
+
+
         }
+    }
+}
+
+/**
+ * Calcula la distancia en línea recta entre
+ * el usuario y un establecimiento.
+ *
+ * Devuelve un texto listo para mostrar
+ * en las tarjetas de PetConnect.
+ */
+private fun calcularDistanciaNegocio(
+    ubicacionUsuario: LatLng?,
+    latitudNegocio: Double,
+    longitudNegocio: Double
+): String {
+
+    // Todavía no conocemos la ubicación del usuario.
+    if (ubicacionUsuario == null) {
+        return "Activa tu ubicación"
+    }
+
+    // Evitamos calcular distancias con datos inválidos.
+    if (
+        !latitudNegocio.isFinite() ||
+        !longitudNegocio.isFinite() ||
+        latitudNegocio !in -90.0..90.0 ||
+        longitudNegocio !in -180.0..180.0 ||
+        (latitudNegocio == 0.0 && longitudNegocio == 0.0)
+    ) {
+        return "Distancia no disponible"
+    }
+
+    val resultado = FloatArray(1)
+
+    Location.distanceBetween(
+        ubicacionUsuario.latitude,
+        ubicacionUsuario.longitude,
+        latitudNegocio,
+        longitudNegocio,
+        resultado
+    )
+
+    val distanciaMetros = resultado[0]
+
+    return if (distanciaMetros < 1000f) {
+
+        "${distanciaMetros.toInt()} m"
+
+    } else {
+
+        String.format(
+            Locale("es", "CO"),
+            "%.1f km",
+            distanciaMetros / 1000f
+        )
     }
 }
 
@@ -346,10 +732,12 @@ fun MapScreen(
 @Composable
 private fun MapCategoryChip(
     text: String,
-    selected: Boolean
-) {
+    selected: Boolean,
+    onClick: () -> Unit
+){
 
     Surface(
+        onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         color = if (selected) {
             Color(0xFF227A76)
@@ -454,12 +842,15 @@ private fun MapMarker(
 private fun NearbyServiceCard(
     emoji: String,
     name: String,
+    category: String,
     distance: String,
     rating: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
 
     Card(
+        onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -467,77 +858,151 @@ private fun NearbyServiceCard(
         )
     ) {
 
+
         Column(
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
+            // ==========================================
+            // ÍCONO, NOMBRE Y CATEGORÍA
+            // ==========================================
+
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFFE5F1EE)),
                     contentAlignment = Alignment.Center
                 ) {
-
                     Text(
                         text = emoji,
-                        fontSize = 20.sp
+                        fontSize = 19.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Text(
-                    text = name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = distance,
-                color = Color(0xFF777777),
-                fontSize = 13.sp
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Text(
-                    text = "★ $rating",
-                    color = Color(0xFFD58A00),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFE4F1E5)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
 
                     Text(
-                        text = "Abierto",
-                        color = Color(0xFF39844E),
+                        text = name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Text(
+                        text = category,
                         fontSize = 11.sp,
-                        modifier = Modifier.padding(
-                            horizontal = 8.dp,
-                            vertical = 4.dp
-                        )
+                        color = Color(0xFF777777),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
+
+            HorizontalDivider(
+                color = Color(0xFFEAEAE6),
+                thickness = 1.dp
+            )
+
+            // ==========================================
+            // DISTANCIA Y CALIFICACIÓN
+            // ==========================================
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+
+                Text(
+                    text = distance,
+                    fontSize = 11.sp,
+                    color = Color(0xFF666666),
+                    maxLines = 1
+                )
+
+                Text(
+                    text = "★ $rating",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFD58A00)
+                )
+            }
         }
+
     }
+
+}
+
+private fun normalizarCategoria(texto: String): String {
+
+    val textoSinTildes = Normalizer.normalize(
+        texto.trim().lowercase(Locale.ROOT),
+        Normalizer.Form.NFD
+    )
+
+    return textoSinTildes
+        .replace(Regex("\\p{M}+"), "")
+}
+private fun obtenerEmojiNegocio(categoria: String): String {
+
+    return when (normalizarCategoria(categoria)) {
+        "veterinaria", "veterinarias" -> "🏥"
+
+        "peluqueria", "peluquerias",
+        "bano", "bano y peluqueria" -> "✂️"
+
+        "paseador", "paseadores", "paseos" -> "🐕"
+
+        "guarderia", "guarderias" -> "🏨"
+
+        else -> "🐾"
+    }
+}
+
+
+private fun obtenerDistanciaEnMetros(
+    ubicacionUsuario: LatLng?,
+    latitudNegocio: Double,
+    longitudNegocio: Double
+): Float {
+
+    // Si no hay ubicación, enviamos el negocio al final.
+    if (ubicacionUsuario == null) {
+        return Float.MAX_VALUE
+    }
+
+    // Validación de coordenadas.
+    if (
+        !latitudNegocio.isFinite() ||
+        !longitudNegocio.isFinite() ||
+        latitudNegocio !in -90.0..90.0 ||
+        longitudNegocio !in -180.0..180.0 ||
+        (latitudNegocio == 0.0 && longitudNegocio == 0.0)
+    ) {
+        return Float.MAX_VALUE
+    }
+
+    val resultado = FloatArray(1)
+
+    Location.distanceBetween(
+        ubicacionUsuario.latitude,
+        ubicacionUsuario.longitude,
+        latitudNegocio,
+        longitudNegocio,
+        resultado
+    )
+
+    return resultado[0]
 }

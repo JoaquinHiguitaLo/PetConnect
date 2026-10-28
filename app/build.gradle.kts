@@ -55,16 +55,15 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("androidx.navigation:navigation-compose:2.8.4")
     implementation("androidx.compose.material:material-icons-extended")
-    //usa el set de versiones 33.5.1 y el BoM se encarga de que todas las librerías de Firebase que agregues después sean compatibles entre sí.
+    // Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
-    //firebase-auth-ktx es específicamente el SDK de autenticación, que es lo que necesitamos para HU-01.
-    //Analítica de uso de la aplicación
     implementation("com.google.firebase:firebase-analytics")
-    //Usuarios / login / registro / UID
     implementation("com.google.firebase:firebase-auth")
-    //Base de datos
     implementation("com.google.firebase:firebase-firestore")
+    // Corrutinas y ViewModel
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    // MapLibre Native para Android
+    implementation("org.maplibre.gl:android-sdk:13.6.1")
 
 }

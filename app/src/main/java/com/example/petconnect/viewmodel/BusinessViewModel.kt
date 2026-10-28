@@ -137,6 +137,48 @@ fun crearNegocio(business: Business) {
     }
 
     /**
+     * Carga todos los negocios aprobados.
+     *
+     * Se utilizará para mostrar establecimientos
+     * públicos en el mapa de PetConnect.
+     */
+    fun cargarNegociosAprobados() {
+
+        viewModelScope.launch {
+
+            // Comenzamos una nueva consulta.
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = null,
+                businesses = emptyList()
+            )
+
+            // Consultamos únicamente negocios aprobados.
+            val result = businessRepository
+                .obtenerNegociosAprobados()
+
+            result.onSuccess { businesses ->
+
+                // Guardamos los negocios para la interfaz.
+                _uiState.value = _uiState.value.copy(
+                    businesses = businesses,
+                    isLoading = false,
+                    errorMessage = null
+                )
+
+            }.onFailure { error ->
+
+                // Informamos si Firestore no pudo responder.
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = error.message
+                        ?: "No se pudieron cargar los establecimientos."
+                )
+            }
+        }
+    }
+
+    /**
      * Carga un negocio específico utilizando su ID.
      *
      * Guarda el negocio obtenido dentro de selectedBusiness
