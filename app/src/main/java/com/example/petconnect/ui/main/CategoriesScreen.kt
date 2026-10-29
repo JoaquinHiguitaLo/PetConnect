@@ -135,14 +135,14 @@ private fun CategoryCard(
 ) {
     // Relacionamos cada categoría con su imagen en drawable.
     val imageRes = when (category.id) {
-        "veterinaria" -> R.drawable.veterinaria
-        "peluqueria" -> R.drawable.peluqueria
-        "bano" -> R.drawable.bano
-        "guarderia" -> R.drawable.guarderia
-        "paseadores" -> R.drawable.paseadores
-        "adiestramiento" -> R.drawable.adiestramiento
-        "tiendas" -> R.drawable.tienda
-        "parques" -> R.drawable.parque
+        "veterinaria" -> R.drawable.cat_parques
+        "peluqueria" -> R.drawable.cat_peluqueria
+        "bano" -> R.drawable.cat_guarderia
+        "guarderia" -> R.drawable.cat_guarderia
+        "paseadores" -> R.drawable.cat_paseadores
+        "adiestramiento" -> R.drawable.cat_hospital
+        "tiendas" -> R.drawable.cat_tiendas
+        "parques" -> R.drawable.cat_parques
 
         // Farmacias todavía no tiene una ilustración propia.
         else -> null

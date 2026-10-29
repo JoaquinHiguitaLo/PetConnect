@@ -201,6 +201,19 @@ fun MainScreen(
     var selectedPet by remember {
         mutableStateOf<Pet?>(null)
     }
+    // Mascota cuyo carnet de vacunación estamos consultando.
+    var petForVaccines by remember {
+        mutableStateOf<Pet?>(null)
+    }
+
+    // Controla la pantalla del carnet.
+    var showPetVaccines by remember {
+        mutableStateOf(false)
+    }
+    // Controla el formulario para registrar vacunas.
+    var showAddPetVaccine by remember {
+        mutableStateOf(false)
+    }
 
 
 
@@ -280,7 +293,7 @@ fun MainScreen(
             // utilizan su propia flecha para regresar.
             if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory &&
                 !showBusinessDetail && !showMyBusinesses && !showAddBusiness && !showManageBusiness
-                && !showEditBusiness && !showMyAddresses && !showAddAddress && !showFeaturedServices) {
+                && !showEditBusiness && !showMyAddresses && !showAddAddress && !showFeaturedServices && !showPetVaccines && !showAddPetVaccine) {
                 BottomNav(
                     selectedItem = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -293,7 +306,43 @@ fun MainScreen(
         // PANTALLA SECUNDARIA: INFORMACIÓN PERSONAL
         // ========================================================
 
-        if (showPersonalInfo) {
+        if (showAddPetVaccine && petForVaccines != null) {
+
+            AddPetVaccineScreen(
+                mascota = petForVaccines!!,
+                modifier = Modifier.padding(innerPadding),
+
+                onBack = {
+                    showAddPetVaccine = false
+                    showPetVaccines = true
+                },
+
+                onSaved = {
+                    // Firestore confirmó el registro.
+                    showAddPetVaccine = false
+                    showPetVaccines = true
+                }
+            )
+
+        } else if (showPetVaccines && petForVaccines != null) {
+
+            PetVaccineScreen(
+                mascota = petForVaccines!!,
+                modifier = Modifier.padding(innerPadding),
+
+                onBack = {
+                    showPetVaccines = false
+                    petForVaccines = null
+                    selectedItem = 2
+                },
+
+                onAddVaccine = {
+                    showPetVaccines = false
+                    showAddPetVaccine = true
+                }
+            )
+
+        } else if (showPersonalInfo) {
 
             PersonalInfoScreen(
                 modifier = Modifier.padding(innerPadding),
@@ -695,6 +744,10 @@ fun MainScreen(
                         selectedPet = pet
                         // Indica que debe abrir la pantalla de edición.
                         showEditPet = true
+                    },
+                    onViewVaccines = { mascota ->
+                        petForVaccines = mascota
+                        showPetVaccines = true
                     },
                     onDeletePet = { pet ->
 

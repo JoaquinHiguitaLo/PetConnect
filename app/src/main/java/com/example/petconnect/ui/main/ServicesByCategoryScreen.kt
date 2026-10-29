@@ -203,7 +203,7 @@ private fun BusinessCard(
             R.drawable.guarderianegocio
 
         business.nombre.contains("peluquer", ignoreCase = true) ->
-            R.drawable.peluquerianegocio
+            R.drawable.vetvida
 
         business.nombre.contains("tienda", ignoreCase = true) ->
             R.drawable.tiendanegocio
@@ -216,15 +216,15 @@ private fun BusinessCard(
             R.drawable.guarderianegocio
 
         else -> when (business.categoria) {
-            "veterinaria" -> R.drawable.veterinaria
-            "peluqueria" -> R.drawable.peluqueria
-            "bano" -> R.drawable.bano
-            "guarderia" -> R.drawable.guarderia
-            "paseadores" -> R.drawable.paseadores
-            "adiestramiento" -> R.drawable.adiestramiento
-            "tiendas" -> R.drawable.tienda
-            "parques" -> R.drawable.parque
-            else -> R.drawable.veterinaria
+            "veterinaria" -> R.drawable.cat_hospital
+            "peluqueria" -> R.drawable.cat_peluqueria
+            "bano" -> R.drawable.cat_peluqueria
+            "guarderia" -> R.drawable.cat_guarderia
+            "paseadores" -> R.drawable.cat_paseadores
+            "adiestramiento" -> R.drawable.cat_guarderia
+            "tiendas" -> R.drawable.cat_tiendas
+            "parques" -> R.drawable.cat_parques
+            else -> R.drawable.icon_ubicacion
         }
     }
 

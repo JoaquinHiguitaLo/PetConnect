@@ -326,17 +326,17 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold
                     )
 
+
                     TextButton(
                         onClick = onViewAllFeatured
-                    ){
+                    ) {
                         Text(
                             text = "Ver todos",
-                            modifier = Modifier.clickable {
-                                onViewAllCategories()
-                            },
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium)
+                            fontWeight = FontWeight.Medium
+                        )
                     }
+
 
                 }
 

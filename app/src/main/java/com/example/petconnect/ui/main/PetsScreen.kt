@@ -21,13 +21,23 @@ import com.example.petconnect.ui.theme.PetConnectTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.viewmodel.PetsViewModel
 import com.example.petconnect.data.model.Pet
+import android.net.Uri
+import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun PetsScreen(
     modifier: Modifier = Modifier,
     onAddPet: () -> Unit = {},
     onEditPet: (Pet) -> Unit = {},
-    onDeletePet: (Pet) -> Unit
+    onDeletePet: (Pet) -> Unit,
+    onViewVaccines: (Pet) -> Unit = {}
 ) {
 
     // ViewModel encargado de manejar las mascotas.
@@ -65,7 +75,8 @@ fun PetsScreen(
             pets = uiState.pets,
             onAddPet = onAddPet,
             onEditPet = onEditPet,
-            onDeletePet = onDeletePet
+            onDeletePet = onDeletePet,
+            onViewVaccines = onViewVaccines
         )
     }
 }
@@ -145,20 +156,16 @@ private fun PetsHeader(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
+
             SummaryChip(
-                text = "$cantidadMascotas mascotas",
+                text = if (cantidadMascotas == 1) {
+                    "1 mascota"
+                } else {
+                    "$cantidadMascotas mascotas"
+                },
                 color = MaterialTheme.colorScheme.primaryContainer
             )
 
-            SummaryChip(
-                text = "2 vacunas al día ✓",
-                color = PetConnectTheme.extraColors.success
-            )
-
-            SummaryChip(
-                text = "1 pendiente",
-                color = MaterialTheme.colorScheme.tertiary
-            )
         }
     }
 }
@@ -190,8 +197,34 @@ private fun PetsContent(
     pets: List<Pet>,
     onAddPet: () -> Unit,
     onEditPet: (Pet) -> Unit,
-    onDeletePet: (Pet) -> Unit
+    onDeletePet: (Pet) -> Unit,
+    onViewVaccines: (Pet) -> Unit
 ) {
+
+    // Fotografías temporales por ID de mascota.
+    val fotosMascotas = remember {
+        mutableStateMapOf<String, Uri>()
+    }
+
+    // Mascota a la que estamos cambiando la foto.
+    var mascotaSeleccionadaId by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    // Selector de imágenes de Android.
+    val selectorFotoMascota = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+
+        val mascotaId = mascotaSeleccionadaId
+
+        if (uri != null && mascotaId != null) {
+            fotosMascotas[mascotaId] = uri
+        }
+
+        mascotaSeleccionadaId = null
+    }
+
     val petsUi = pets.map { pet ->
         PetUi(
             id = pet.id,
@@ -230,8 +263,16 @@ private fun PetsContent(
                     it.id == petUi.id
                 }
 
+
                 PetCard(
                     pet = petUi,
+
+                    fotoUri = fotosMascotas[petUi.id],
+
+                    onSelectPhoto = {
+                        mascotaSeleccionadaId = petUi.id
+                        selectorFotoMascota.launch("image/*")
+                    },
 
                     onEditPet = {
                         if (petOriginal != null) {
@@ -243,8 +284,16 @@ private fun PetsContent(
                         if (petOriginal != null) {
                             onDeletePet(petOriginal)
                         }
+                    },
+
+                    onViewVaccines = {
+                        petOriginal?.let { mascota ->
+                            onViewVaccines(mascota)
+                        }
                     }
+
                 )
+
             }
 
             item {
@@ -284,8 +333,11 @@ private data class PetUi(
 @Composable
 private fun PetCard(
     pet: PetUi,
+    fotoUri: Uri?,
+    onSelectPhoto: () -> Unit,
     onEditPet: () -> Unit,
-    onDeletePet: () -> Unit
+    onDeletePet: () -> Unit,
+    onViewVaccines: () -> Unit
 ) {
 
     var expanded by remember { mutableStateOf(false) }
@@ -321,20 +373,53 @@ private fun PetCard(
             ) {
 
                 // Foto / representación de la mascota
+                val context = LocalContext.current
+
+                val fotoBitmap = remember(fotoUri) {
+                    fotoUri?.let { uri ->
+                        try {
+                            context.contentResolver
+                                .openInputStream(uri)
+                                ?.use { stream ->
+                                    BitmapFactory.decodeStream(stream)
+                                }
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
                         .background(
                             MaterialTheme.colorScheme.primaryContainer
-                        ),
+                        )
+                        .clickable {
+                            onSelectPhoto()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = pet.emoji,
-                        fontSize = 38.sp
-                    )
+
+                    if (fotoBitmap != null) {
+
+                        Image(
+                            bitmap = fotoBitmap.asImageBitmap(),
+                            contentDescription = "Foto de ${pet.name}",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+                    } else {
+
+                        Text(
+                            text = pet.emoji,
+                            fontSize = 38.sp
+                        )
+                    }
                 }
+
 
                 Spacer(
                     modifier = Modifier.width(16.dp)
@@ -358,9 +443,6 @@ private fun PetCard(
                             modifier = Modifier.width(8.dp)
                         )
 
-                        VaccineBadge(
-                            vaccinated = pet.vaccinated
-                        )
                     }
 
                     Spacer(
@@ -405,6 +487,28 @@ private fun PetCard(
                     modifier = Modifier.height(16.dp)
                 )
 
+                Button(
+                    onClick = onViewVaccines,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF227C78)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = "💉  Carnet de vacunación",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -424,11 +528,6 @@ private fun PetCard(
                         modifier = Modifier.weight(1f)
                     )
 
-                    PetInfoBox(
-                        title = "Próx. cita",
-                        value = "15 Sep",
-                        modifier = Modifier.weight(1f)
-                    )
                 }
 
                 Spacer(

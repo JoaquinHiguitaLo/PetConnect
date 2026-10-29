@@ -23,6 +23,7 @@ import com.example.petconnect.data.model.UserAddress
 import com.example.petconnect.viewmodel.BusinessViewModel
 import android.location.Location
 import java.util.Locale
+import java.text.Normalizer
 
 private val VerdeDestacados = Color(0xFF227A76)
 private val FondoDestacados = Color(0xFFF9F8F4)
@@ -39,13 +40,107 @@ fun FeaturedServicesScreen(
 ) {
     val uiState by businessViewModel.uiState.collectAsState()
 
+    var categoriaSeleccionada by remember {
+        mutableStateOf("Todos")
+    }
+
+    var ordenSeleccionado by remember {
+        mutableStateOf("Calificación")
+    }
+
+    var textoBusqueda by remember {
+        mutableStateOf("")
+    }
+
     LaunchedEffect(businessViewModel) {
         businessViewModel.cargarNegociosAprobados()
     }
 
-    val negocios = uiState.businesses
-        .filter { it.estadoVerificacion == "APROBADO" }
-        .sortedByDescending { it.calificacion }
+
+
+    val negociosFiltrados = uiState.businesses
+        .filter { negocio ->
+
+            // Solo establecimientos aprobados.
+            if (negocio.estadoVerificacion != "APROBADO") {
+                return@filter false
+            }
+
+            val categoria = negocio.categoria
+                .trim()
+                .lowercase()
+
+            // Primero comprobamos la categoría seleccionada.
+            val coincideCategoria = when (categoriaSeleccionada) {
+                "Veterinarias" ->
+                    categoria == "veterinaria" ||
+                            categoria == "veterinarias"
+
+                "Peluquerías" ->
+                    categoria == "peluquería" ||
+                            categoria == "peluqueria" ||
+                            categoria == "baño"
+
+                "Guarderías" ->
+                    categoria == "guardería" ||
+                            categoria == "guarderia"
+
+                "Paseadores" ->
+                    categoria == "paseador" ||
+                            categoria == "paseadores"
+
+                else -> true
+            }
+
+            // Después comprobamos el texto escrito.
+            val busqueda = normalizarBusqueda(textoBusqueda)
+
+            val coincideBusqueda =
+                busqueda.isBlank() ||
+                        normalizarBusqueda(negocio.nombre).contains(busqueda) ||
+                        normalizarBusqueda(negocio.categoria).contains(busqueda)
+
+            coincideCategoria && coincideBusqueda
+        }
+
+
+
+    val negocios = when (ordenSeleccionado) {
+
+        "Cercanía" -> negociosFiltrados.sortedBy { negocio ->
+
+            if (
+                direccionActiva == null ||
+                !coordenadasValidas(
+                    direccionActiva.latitud,
+                    direccionActiva.longitud
+                ) ||
+                !coordenadasValidas(
+                    negocio.latitud,
+                    negocio.longitud
+                )
+            ) {
+                Float.MAX_VALUE
+            } else {
+                val resultado = FloatArray(1)
+
+                Location.distanceBetween(
+                    direccionActiva.latitud,
+                    direccionActiva.longitud,
+                    negocio.latitud,
+                    negocio.longitud,
+                    resultado
+                )
+
+                resultado[0]
+            }
+        }
+
+        else -> negociosFiltrados.sortedByDescending {
+            it.calificacion
+        }
+    }
+
 
     Column(
         modifier = modifier
@@ -89,6 +184,118 @@ fun FeaturedServicesScreen(
             )
         }
 
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+
+            OutlinedTextField(
+                value = textoBusqueda,
+                onValueChange = { textoBusqueda = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text("Buscar establecimientos...")
+                },
+                leadingIcon = {
+                    Text("🔎")
+                },
+                trailingIcon = {
+                    if (textoBusqueda.isNotEmpty()) {
+                        TextButton(
+                            onClick = { textoBusqueda = "" }
+                        ) {
+                            Text("✕")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp)
+            )
+
+
+            val categorias = listOf(
+                "Todos",
+                "Veterinarias",
+                "Peluquerías",
+                "Guarderías",
+                "Paseadores"
+            )
+
+            androidx.compose.foundation.lazy.LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categorias.size) { index ->
+
+                    val categoria = categorias[index]
+
+                    FilterChip(
+                        selected = categoriaSeleccionada == categoria,
+                        onClick = {
+                            categoriaSeleccionada = categoria
+                        },
+                        label = {
+                            Text(categoria)
+                        }
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+
+                Text(
+                    text = "${negocios.size} servicios",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+
+                var menuAbierto by remember {
+                    mutableStateOf(false)
+                }
+
+                Box {
+
+                    TextButton(
+                        onClick = { menuAbierto = true }
+                    ) {
+                        Text(
+                            text = ordenSeleccionado
+                        )
+                        Text(" ▾")
+                    }
+
+                    DropdownMenu(
+                        expanded = menuAbierto,
+                        onDismissRequest = {
+                            menuAbierto = false
+                        }
+                    ) {
+
+                        listOf(
+                            "Calificación",
+                            "Cercanía"
+                        ).forEach { opcion ->
+
+                            DropdownMenuItem(
+                                text = { Text(opcion) },
+                                onClick = {
+                                    ordenSeleccionado = opcion
+                                    menuAbierto = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+
         when {
             uiState.isLoading -> {
                 Box(
@@ -114,17 +321,26 @@ fun FeaturedServicesScreen(
                 }
             }
 
+
             negocios.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Aún no hay servicios destacados.",
-                        color = Color.Gray
+                        text = if (textoBusqueda.isNotBlank()) {
+                            "No encontramos establecimientos para \"$textoBusqueda\"."
+                        } else if (categoriaSeleccionada != "Todos") {
+                            "No hay servicios disponibles en esta categoría."
+                        } else {
+                            "Aún no hay servicios destacados."
+                        },
+                        color = Color.Gray,
+                        modifier = Modifier.padding(24.dp)
                     )
                 }
             }
+
 
             else -> {
                 LazyVerticalGrid(
@@ -165,7 +381,9 @@ private fun FeaturedBusinessCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(190.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -196,14 +414,15 @@ private fun FeaturedBusinessCard(
             }
 
             Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
 
                 Text(
                     text = negocio.nombre,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyMedium,
+                    minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -234,11 +453,8 @@ private fun distanciaDestacado(
     if (direccion == null) return "Sin ubicación"
 
     if (
-        !negocio.latitud.isFinite() ||
-        !negocio.longitud.isFinite() ||
-        negocio.latitud !in -90.0..90.0 ||
-        negocio.longitud !in -180.0..180.0 ||
-        (negocio.latitud == 0.0 && negocio.longitud == 0.0)
+        !coordenadasValidas(direccion.latitud, direccion.longitud) ||
+        !coordenadasValidas(negocio.latitud, negocio.longitud)
     ) {
         return "Sin distancia"
     }
@@ -264,4 +480,26 @@ private fun distanciaDestacado(
             metros / 1000f
         )
     }
+}
+
+private fun normalizarBusqueda(texto: String): String {
+    val textoSinTildes = Normalizer.normalize(
+        texto.trim().lowercase(),
+        Normalizer.Form.NFD
+    )
+
+    return textoSinTildes
+        .replace(Regex("\\p{M}+"), "")
+}
+
+
+private fun coordenadasValidas(
+    latitud: Double,
+    longitud: Double
+): Boolean {
+    return latitud.isFinite() &&
+            longitud.isFinite() &&
+            latitud in -90.0..90.0 &&
+            longitud in -180.0..180.0 &&
+            !(latitud == 0.0 && longitud == 0.0)
 }

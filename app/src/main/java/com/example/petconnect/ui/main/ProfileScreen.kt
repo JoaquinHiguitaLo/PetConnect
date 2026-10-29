@@ -30,6 +30,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.getValue
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
+import android.graphics.BitmapFactory
 
 @Composable
 fun ProfileScreen(
@@ -42,6 +54,21 @@ fun ProfileScreen(
 ) {
     // Observamos el estado del perfil.
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+
+    var fotoSeleccionada by remember {
+        mutableStateOf<Uri?>(null)
+    }
+
+    val selectorFoto = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            fotoSeleccionada = uri
+        }
+    }
+
 
     // Cargamos los datos del usuario al entrar a esta pantalla.
     LaunchedEffect(Unit) {
@@ -145,20 +172,50 @@ fun ProfileScreen(
             ) {
 
                 // Avatar
+
                 Box(
                     modifier = Modifier
                         .size(78.dp)
-                        .background(
-                            color = Color(0xFFB5E3E1),
-                            shape = CircleShape
-                        ),
+                        .clip(CircleShape)
+                        .background(Color(0xFFB5E3E1))
+                        .clickable {
+                            selectorFoto.launch("image/*")
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "👩🏻",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
+
+                    val bitmap = remember(fotoSeleccionada) {
+                        fotoSeleccionada?.let { uri ->
+                            try {
+                                context.contentResolver
+                                    .openInputStream(uri)
+                                    ?.use { stream ->
+                                        BitmapFactory.decodeStream(stream)
+                                    }
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                    }
+
+                    if (bitmap != null) {
+
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Fotografía de perfil",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+                    } else {
+
+                        Text(
+                            text = "👤",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
                 }
+
 
                 Spacer(
                     modifier = Modifier.width(16.dp)
@@ -206,28 +263,8 @@ fun ProfileScreen(
                     )
                 }
 
-                // Botón editar
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = Color(0xFFB5E3E1),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(
-                            horizontal = 14.dp,
-                            vertical = 10.dp
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Editar",
-                        color = Color(0xFF227C78),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
-    }
 
 
         // ============================================================
@@ -363,7 +400,7 @@ fun ProfileScreen(
         }
     }
 
-
+}
 // ====================================================================
 // TARJETA DE SECCIÓN
 // ====================================================================

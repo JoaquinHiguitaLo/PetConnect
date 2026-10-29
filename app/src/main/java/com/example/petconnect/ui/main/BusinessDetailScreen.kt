@@ -104,13 +104,13 @@ fun BusinessDetailScreen(
                 // Imagen ilustrativa según la categoría.
                 val imageRes = when (business.categoria) {
                     "veterinaria" -> R.drawable.vetvida
-                    "peluqueria" -> R.drawable.peluquerianegocio
+                    "peluqueria" -> R.drawable.vetvida
                     "bano" -> R.drawable.banonegocio
                     "guarderia" -> R.drawable.guarderianegocio
-                    "paseadores" -> R.drawable.paseadores
-                    "adiestramiento" -> R.drawable.adiestramiento
+                    "paseadores" -> R.drawable.vetvida
+                    "adiestramiento" -> R.drawable.vetvida
                     "tiendas" -> R.drawable.tiendanegocio
-                    "parques" -> R.drawable.parque
+                    "parques" -> R.drawable.vetvida
                     else -> R.drawable.vetvida
                 }
 
