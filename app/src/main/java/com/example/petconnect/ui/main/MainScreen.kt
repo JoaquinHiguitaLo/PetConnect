@@ -27,6 +27,7 @@ import org.maplibre.android.camera.CameraPosition
 import com.example.petconnect.ui.address.MyAddressesScreen
 import com.example.petconnect.ui.address.AddAddressScreen
 import com.example.petconnect.viewmodel.AddressViewModel
+import com.example.petconnect.data.model.PetVaccine
 
 @Composable
 fun MainScreen(
@@ -194,8 +195,7 @@ fun MainScreen(
     val addressViewModel: AddressViewModel = viewModel(
         key = "my_addresses"
     )
-
-// Observamos el estado de las direcciones.
+    // Observamos el estado de las direcciones.
     val addressUiState by addressViewModel.uiState.collectAsState()
 
     var selectedPet by remember {
@@ -205,7 +205,6 @@ fun MainScreen(
     var petForVaccines by remember {
         mutableStateOf<Pet?>(null)
     }
-
     // Controla la pantalla del carnet.
     var showPetVaccines by remember {
         mutableStateOf(false)
@@ -213,6 +212,11 @@ fun MainScreen(
     // Controla el formulario para registrar vacunas.
     var showAddPetVaccine by remember {
         mutableStateOf(false)
+    }
+    // Vacuna seleccionada para editar.
+    // null significa que vamos a registrar una nueva.
+    var vaccineForEdit by remember {
+        mutableStateOf<PetVaccine?>(null)
     }
 
 
@@ -306,25 +310,29 @@ fun MainScreen(
         // PANTALLA SECUNDARIA: INFORMACIÓN PERSONAL
         // ========================================================
 
+
         if (showAddPetVaccine && petForVaccines != null) {
 
             AddPetVaccineScreen(
                 mascota = petForVaccines!!,
+                vacunaEditar = vaccineForEdit,
                 modifier = Modifier.padding(innerPadding),
 
                 onBack = {
                     showAddPetVaccine = false
                     showPetVaccines = true
+                    vaccineForEdit = null
                 },
 
                 onSaved = {
-                    // Firestore confirmó el registro.
                     showAddPetVaccine = false
                     showPetVaccines = true
+                    vaccineForEdit = null
                 }
             )
 
         } else if (showPetVaccines && petForVaccines != null) {
+
 
             PetVaccineScreen(
                 mascota = petForVaccines!!,
@@ -333,13 +341,22 @@ fun MainScreen(
                 onBack = {
                     showPetVaccines = false
                     petForVaccines = null
+                    vaccineForEdit = null
                     selectedItem = 2
                 },
 
                 onAddVaccine = {
+                    vaccineForEdit = null
+                    showPetVaccines = false
+                    showAddPetVaccine = true
+                },
+
+                onEditVaccine = { vacuna ->
+                    vaccineForEdit = vacuna
                     showPetVaccines = false
                     showAddPetVaccine = true
                 }
+
             )
 
         } else if (showPersonalInfo) {

@@ -26,17 +26,39 @@ fun AddPetVaccineScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit,
     modifier: Modifier = Modifier,
+    vacunaEditar: PetVaccine? = null,
     vaccineViewModel: PetVaccineViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val uiState by vaccineViewModel.uiState.collectAsState()
 
-    var nombreVacuna by remember { mutableStateOf("") }
-    var fechaAplicacion by remember { mutableStateOf("") }
-    var proximaDosis by remember { mutableStateOf("") }
-    var veterinaria by remember { mutableStateOf("") }
-    var observaciones by remember { mutableStateOf("") }
-    var guardando by remember { mutableStateOf(false) }
+
+    val esEdicion = vacunaEditar != null
+
+    var nombreVacuna by remember(vacunaEditar?.id) {
+        mutableStateOf(vacunaEditar?.nombreVacuna ?: "")
+    }
+
+    var fechaAplicacion by remember(vacunaEditar?.id) {
+        mutableStateOf(vacunaEditar?.fechaAplicacion ?: "")
+    }
+
+    var proximaDosis by remember(vacunaEditar?.id) {
+        mutableStateOf(vacunaEditar?.proximaDosis ?: "")
+    }
+
+    var veterinaria by remember(vacunaEditar?.id) {
+        mutableStateOf(vacunaEditar?.veterinaria ?: "")
+    }
+
+    var observaciones by remember(vacunaEditar?.id) {
+        mutableStateOf(vacunaEditar?.observaciones ?: "")
+    }
+
+    var guardando by remember(vacunaEditar?.id) {
+        mutableStateOf(false)
+    }
+
 
     LaunchedEffect(uiState.isSaving, uiState.operationSuccess) {
         if (guardando && uiState.operationSuccess && !uiState.isSaving) {
@@ -96,7 +118,7 @@ fun AddPetVaccineScreen(
             }
 
             Text(
-                text = "Registrar vacuna",
+                text = if (esEdicion) "Editar vacuna" else "Registrar vacuna",
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
@@ -196,10 +218,11 @@ fun AddPetVaccineScreen(
 
             Button(
                 onClick = {
-                    guardando = true
+                    if (!guardando && !uiState.isSaving) {
 
-                    vaccineViewModel.registrarVacuna(
-                        PetVaccine(
+                        val vacuna = PetVaccine(
+                            id = vacunaEditar?.id ?: "",
+                            usuarioId = vacunaEditar?.usuarioId ?: "",
                             mascotaId = mascota.id,
                             nombreVacuna = nombreVacuna.trim(),
                             fechaAplicacion = fechaAplicacion,
@@ -207,8 +230,17 @@ fun AddPetVaccineScreen(
                             veterinaria = veterinaria.trim(),
                             observaciones = observaciones.trim()
                         )
-                    )
+
+                        guardando = true
+
+                        if (esEdicion) {
+                            vaccineViewModel.actualizarVacuna(vacuna)
+                        } else {
+                            vaccineViewModel.registrarVacuna(vacuna)
+                        }
+                    }
                 },
+
                 enabled = formularioValido && !uiState.isSaving,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
@@ -216,10 +248,11 @@ fun AddPetVaccineScreen(
                 )
             ) {
                 Text(
-                    if (uiState.isSaving)
-                        "Guardando..."
-                    else
-                        "Guardar vacuna"
+                    text = when {
+                        uiState.isSaving -> "Guardando..."
+                        esEdicion -> "Guardar cambios"
+                        else -> "Guardar vacuna"
+                    }
                 )
             }
         }

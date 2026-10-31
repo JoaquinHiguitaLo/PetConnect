@@ -33,6 +33,7 @@ fun PetVaccineScreen(
     mascota: Pet,
     onBack: () -> Unit,
     onAddVaccine: () -> Unit,
+    onEditVaccine: (PetVaccine) -> Unit = {},
     modifier: Modifier = Modifier,
     vaccineViewModel: PetVaccineViewModel = viewModel()
 ) {
@@ -245,7 +246,7 @@ fun PetVaccineScreen(
                             VaccineRecordCard(
                                 vacuna = vacuna,
                                 onEdit = {
-                                    // Conectaremos la edición después.
+                                    onEditVaccine(vacuna)
                                 },
                                 onDelete = {
                                     vacunaPorEliminar = vacuna
