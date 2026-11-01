@@ -61,8 +61,8 @@ class PetRepository {
                 .await() //Esperar la respuesta dentro de una coroutine
 
             //Por cada documento de Firestore, se construye un objeto Pet
-            val pets = snapshot.documents.map { document ->
 
+            val pets = snapshot.documents.map { document ->
                 Pet(
                     id = document.id,
                     usuarioId = document.getString("usuarioId") ?: "",
@@ -71,9 +71,15 @@ class PetRepository {
                     raza = document.getString("raza"),
                     edad = document.getLong("edad")?.toInt() ?: 0,
                     tamano = document.getString("tamano") ?: "",
-                    foto = document.getString("foto")
+                    foto = document.getString("foto"),
+
+                    fechaNacimiento = document.getString("fechaNacimiento"),
+                    sexo = document.getString("sexo"),
+                    pesoKg = document.getDouble("pesoKg")
+                        ?: document.getLong("pesoKg")?.toDouble()
                 )
             }
+
 
             Result.success(pets)
 
@@ -111,14 +117,67 @@ class PetRepository {
 // Elimina una mascota existente.
 // ============================================================
 
-    suspend fun eliminarMascota(pet: Pet): Result<Unit> {
 
+    suspend fun eliminarMascota(pet: Pet): Result<Unit> {
         return try {
 
-            db.collection("mascotas")
+            val usuarioActual = com.google.firebase.auth.FirebaseAuth
+                .getInstance()
+                .currentUser?.uid
+                ?: throw IllegalStateException(
+                    "No hay un usuario autenticado."
+                )
+
+            require(pet.id.isNotBlank()) {
+                "La mascota no tiene identificador."
+            }
+
+            // Consultamos el perfil real antes de eliminarlo.
+            val referenciaMascota = db
+                .collection("mascotas")
                 .document(pet.id)
-                .delete()
+
+            val documentoMascota = referenciaMascota
+                .get()
                 .await()
+
+            require(documentoMascota.exists()) {
+                "La mascota ya no existe."
+            }
+
+            require(
+                documentoMascota.getString("usuarioId") == usuarioActual
+            ) {
+                "No puedes eliminar mascotas de otro usuario."
+            }
+
+            // Buscamos las vacunas asociadas a esta mascota.
+            val vacunasAsociadas = db
+                .collection("vacunasMascotas")
+                .whereEqualTo("usuarioId", usuarioActual)
+                .whereEqualTo("mascotaId", pet.id)
+                .get()
+                .await()
+
+            // Firestore admite un máximo de 500 escrituras
+            // por lote. Reservamos una para la mascota.
+            require(vacunasAsociadas.size() < 500) {
+                "La mascota tiene demasiadas vacunas para " +
+                        "eliminarlas en una sola operación."
+            }
+
+            val batch = db.batch()
+
+            // Primero incluimos las vacunas.
+            vacunasAsociadas.documents.forEach { vacuna ->
+                batch.delete(vacuna.reference)
+            }
+
+            // Después incluimos el perfil.
+            batch.delete(referenciaMascota)
+
+            // Confirmamos todas las eliminaciones juntas.
+            batch.commit().await()
 
             Result.success(Unit)
 

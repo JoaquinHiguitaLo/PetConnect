@@ -19,6 +19,15 @@ import com.example.petconnect.data.model.Pet
 import com.example.petconnect.data.model.PetVaccine
 import com.example.petconnect.viewmodel.PetVaccineViewModel
 import java.time.LocalDate
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
+import com.example.petconnect.ui.components.PetConnectTopBar
 
 @Composable
 fun AddPetVaccineScreen(
@@ -34,6 +43,14 @@ fun AddPetVaccineScreen(
 
 
     val esEdicion = vacunaEditar != null
+
+    var mostrarConfirmacionEliminar by remember(vacunaEditar?.id) {
+        mutableStateOf(false)
+    }
+
+    var eliminando by remember(vacunaEditar?.id) {
+        mutableStateOf(false)
+    }
 
     var nombreVacuna by remember(vacunaEditar?.id) {
         mutableStateOf(vacunaEditar?.nombreVacuna ?: "")
@@ -61,8 +78,14 @@ fun AddPetVaccineScreen(
 
 
     LaunchedEffect(uiState.isSaving, uiState.operationSuccess) {
-        if (guardando && uiState.operationSuccess && !uiState.isSaving) {
+        if (
+            (guardando || eliminando) &&
+            uiState.operationSuccess &&
+            !uiState.isSaving
+        ) {
             guardando = false
+            eliminando = false
+
             vaccineViewModel.limpiarResultadoOperacion()
             onSaved()
         }
@@ -94,94 +117,124 @@ fun AddPetVaccineScreen(
                 fechaAplicacion.isNotBlank() &&
                 (proximaDosis.isBlank() || proximaDosis >= fechaAplicacion)
 
+    val formaCampo = RoundedCornerShape(14.dp)
+    val colorBorde = Color(0xFFD5DAD4)
+    val verdeFormulario = Color(0xFF227C78)
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFFAF9F6))
             .verticalScroll(rememberScrollState())
     ) {
+        PetConnectTopBar(
+            onBack = onBack
+        )
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Color(0xFF227C78),
-                    RoundedCornerShape(
-                        bottomStart = 24.dp,
-                        bottomEnd = 24.dp
-                    )
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 8.dp,
+                    bottom = 12.dp
                 )
-                .padding(20.dp)
         ) {
-            TextButton(onClick = onBack) {
-                Text("← Regresar", color = Color.White)
-            }
+
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = if (esEdicion) "Editar vacuna" else "Registrar vacuna",
+                text = if (esEdicion) {
+                    "Editar vacuna"
+                } else {
+                    "Registrar vacuna"
+                },
                 style = MaterialTheme.typography.headlineMedium,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "Carnet de ${mascota.nombre}",
-                color = Color.White.copy(alpha = 0.85f)
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF227C78)
             )
         }
 
+
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 28.dp,
+                    end = 28.dp,
+                    top = 16.dp,
+                    bottom = 32.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Text(
+                    text = "Nombre de la vacuna *",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF475951),
+                    fontWeight = FontWeight.Medium
+                )
 
-            OutlinedTextField(
-                value = nombreVacuna,
-                onValueChange = { nombreVacuna = it },
-                label = { Text("Nombre de la vacuna *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+                OutlinedTextField(
+                    value = nombreVacuna,
+                    onValueChange = { nombreVacuna = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = {
+                        Text("Ej. Triple felina")
+                    },
+                    shape = formaCampo,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = verdeFormulario,
+                        unfocusedBorderColor = colorBorde
+                    )
+                )
+            }
 
-            OutlinedButton(
+            CampoFechaVacuna(
+                etiqueta = "Fecha de aplicación *",
+                fecha = fechaAplicacion,
+                placeholder = "Seleccionar fecha",
                 onClick = {
                     abrirCalendario(fechaAplicacion) {
                         fechaAplicacion = it
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    if (fechaAplicacion.isBlank())
-                        "Seleccionar fecha de aplicación *"
-                    else
-                        "Aplicación: $fechaAplicacion"
-                )
-            }
+                }
+            )
 
-            OutlinedButton(
+            CampoFechaVacuna(
+                etiqueta = "Próxima dosis (opcional)",
+                fecha = proximaDosis,
+                placeholder = "Seleccionar próxima dosis",
                 onClick = {
                     abrirCalendario(proximaDosis) {
                         proximaDosis = it
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    if (proximaDosis.isBlank())
-                        "Seleccionar próxima dosis (opcional)"
-                    else
-                        "Próxima dosis: $proximaDosis"
-                )
-            }
+                }
+            )
+
 
             if (proximaDosis.isNotBlank()) {
-                TextButton(
-                    onClick = { proximaDosis = "" }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text("Quitar próxima dosis")
+                    TextButton(
+                        onClick = { proximaDosis = "" }
+                    ) {
+                        Text(
+                            text = "Quitar fecha",
+                            color = Color(0xFF227C78),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
                 }
             }
+
 
             if (
                 proximaDosis.isNotBlank() &&
@@ -194,20 +247,60 @@ fun AddPetVaccineScreen(
                 )
             }
 
-            OutlinedTextField(
-                value = veterinaria,
-                onValueChange = { veterinaria = it },
-                label = { Text("Veterinaria (opcional)") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Text(
+                    text = "Veterinaria (opcional)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF475951),
+                    fontWeight = FontWeight.Medium
+                )
 
-            OutlinedTextField(
-                value = observaciones,
-                onValueChange = { observaciones = it },
-                label = { Text("Observaciones (opcional)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3
-            )
+                OutlinedTextField(
+                    value = veterinaria,
+                    onValueChange = { veterinaria = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text("Nombre de la veterinaria")
+                    },
+                    singleLine = true,
+                    shape = formaCampo,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = verdeFormulario,
+                        unfocusedBorderColor = colorBorde
+                    )
+                )
+            }
+
+
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Text(
+                    text = "Observaciones (opcional)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF475951),
+                    fontWeight = FontWeight.Medium
+                )
+
+                OutlinedTextField(
+                    value = observaciones,
+                    onValueChange = { observaciones = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text("Ej. Reacciones, recomendaciones o notas")
+                    },
+                    minLines = 3,
+                    shape = formaCampo,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = verdeFormulario,
+                        unfocusedBorderColor = colorBorde
+                    )
+                )
+            }
+
 
             uiState.errorMessage?.let { mensaje ->
                 Text(
@@ -242,7 +335,11 @@ fun AddPetVaccineScreen(
                 },
 
                 enabled = formularioValido && !uiState.isSaving,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth(0.72f)
+                    .height(48.dp)
+                    .align(Alignment.CenterHorizontally),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF227C78)
                 )
@@ -253,6 +350,176 @@ fun AddPetVaccineScreen(
                         esEdicion -> "Guardar cambios"
                         else -> "Guardar vacuna"
                     }
+                )
+            }
+            if (esEdicion) {
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = {
+                        mostrarConfirmacionEliminar = true
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    enabled = !uiState.isSaving
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "Eliminar vacuna",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+        if (mostrarConfirmacionEliminar && vacunaEditar != null) {
+
+            AlertDialog(
+                onDismissRequest = {
+                    if (!uiState.isSaving) {
+                        mostrarConfirmacionEliminar = false
+                    }
+                },
+
+                title = {
+                    Text("Eliminar vacuna")
+                },
+
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            text = "Estás a punto de eliminar esta vacuna del carnet de ${mascota.nombre}.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = vacunaEditar.nombreVacuna,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Esta acción no se puede deshacer.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            eliminando = true
+                            vaccineViewModel.eliminarVacuna(vacunaEditar.id)
+                            mostrarConfirmacionEliminar = false
+                        },
+                        enabled = !uiState.isSaving
+                    ) {
+                        Text(
+                            text = "Eliminar",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            mostrarConfirmacionEliminar = false
+                        },
+                        enabled = !uiState.isSaving
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CampoFechaVacuna(
+    etiqueta: String,
+    fecha: String,
+    placeholder: String,
+    onClick: () -> Unit
+) {
+    val verde = Color(0xFF227C78)
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Text(
+            text = etiqueta,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF475951)
+        )
+
+        OutlinedButton(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(14.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                Color(0xFFD5DAD4)
+            ),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            contentPadding = PaddingValues(horizontal = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = verde,
+                    modifier = Modifier.size(20.dp)
+                )
+
+                Text(
+                    text = fecha.ifBlank { placeholder },
+                    modifier = Modifier.weight(1f),
+                    color = if (fecha.isBlank()) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

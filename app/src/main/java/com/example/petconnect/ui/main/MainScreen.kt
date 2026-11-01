@@ -28,12 +28,22 @@ import com.example.petconnect.ui.address.MyAddressesScreen
 import com.example.petconnect.ui.address.AddAddressScreen
 import com.example.petconnect.viewmodel.AddressViewModel
 import com.example.petconnect.data.model.PetVaccine
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.runtime.saveable.rememberSaveable
+//import androidx.compose.foundation.layout.calculateTopPadding
+import androidx.compose.ui.Alignment
 
 @Composable
 fun MainScreen(
     onLogout: () -> Unit
 ) {
     val petsViewModel: PetsViewModel = viewModel()
+    val petsUiState by petsViewModel.uiState.collectAsState()
+    var petPendingDeletionId by remember {
+        mutableStateOf<String?>(null)
+    }
     val businessViewModel: BusinessViewModel = viewModel()
     // ViewModel independiente para eliminar negocios.
     // Evita mezclar el resultado con las consultas públicas.
@@ -59,7 +69,7 @@ fun MainScreen(
         ?.nombreCompleto ?: ""
         ?.substringBefore(" ")
         ?.takeIf { it.isNotBlank() }
-        ?: "usuario"
+    ?: "usuario"
 
     // ============================================================
     // NAVEGACIÓN PRINCIPAL
@@ -120,6 +130,39 @@ fun MainScreen(
     var showEditPet by remember {
         mutableStateOf(false)
     }
+
+    // Mascota cuyo perfil individual estamos consultando.
+    var petForProfile by remember {
+        mutableStateOf<Pet?>(null)
+    }
+    var selectedPet by remember {
+        mutableStateOf<Pet?>(null)
+    }
+
+    LaunchedEffect(petsUiState.pets) {
+
+        val mascotaActual = petForProfile
+
+        if (mascotaActual != null) {
+
+            val mascotaActualizada = petsUiState.pets
+                .firstOrNull { it.id == mascotaActual.id }
+
+            if (mascotaActualizada != null) {
+                petForProfile = mascotaActualizada
+            }
+        }
+    }
+
+    // Controla la pantalla del perfil individual.
+    var showPetProfile by remember {
+        mutableStateOf(false)
+    }
+
+    var editPetFromInformation by rememberSaveable {
+        mutableStateOf(false)
+    }
+
     var showCategories by remember { mutableStateOf(false) }
 
     var showServicesByCategory by remember { mutableStateOf(false) }
@@ -198,12 +241,13 @@ fun MainScreen(
     // Observamos el estado de las direcciones.
     val addressUiState by addressViewModel.uiState.collectAsState()
 
-    var selectedPet by remember {
-        mutableStateOf<Pet?>(null)
-    }
+
     // Mascota cuyo carnet de vacunación estamos consultando.
     var petForVaccines by remember {
         mutableStateOf<Pet?>(null)
+    }
+    var showPetInformation by rememberSaveable {
+        mutableStateOf(false)
     }
     // Controla la pantalla del carnet.
     var showPetVaccines by remember {
@@ -218,7 +262,38 @@ fun MainScreen(
     var vaccineForEdit by remember {
         mutableStateOf<PetVaccine?>(null)
     }
+    LaunchedEffect(
+        petsUiState.operationSuccess,
+        petsUiState.isLoading,
+        petPendingDeletionId
+    ) {
+        if (
+            petPendingDeletionId != null &&
+            !petsUiState.isLoading &&
+            petsUiState.operationSuccess
+        ) {
+            showPetInformation = false
+            showPetProfile = false
+            petForProfile = null
+            selectedPet = null
+            selectedItem = 2
 
+            petPendingDeletionId = null
+            petsViewModel.limpiarResultadoOperacion()
+        }
+    }
+    LaunchedEffect(
+        petsUiState.errorMessage,
+        petPendingDeletionId
+    ) {
+        if (
+            petPendingDeletionId != null &&
+            petsUiState.errorMessage != null
+        ) {
+            // La pantalla permanece abierta.
+            // El error se mostrará en el siguiente ajuste visual.
+        }
+    }
 
 
     // ============================================================
@@ -289,621 +364,727 @@ fun MainScreen(
         }
     }
 
-    Scaffold(
-        bottomBar = {
+    val mostrarNavbar =
+        !showPersonalInfo &&
+                !showAddPet &&
+                !showEditPet &&
+                !showCategories &&
+                !showServicesByCategory &&
+                !showBusinessDetail &&
+                !showMyBusinesses &&
+                !showAddBusiness &&
+                !showManageBusiness &&
+                !showEditBusiness &&
+                !showMyAddresses &&
+                !showAddAddress &&
+                !showFeaturedServices &&
+                !showPetVaccines &&
+                !showAddPetVaccine &&
+                !showPetProfile
 
-            // El BottomNav solo aparece en las pantallas principales.
-            // Las pantallas secundarias, como "Agregar mascota",
-            // utilizan su propia flecha para regresar.
-            if (!showPersonalInfo && !showAddPet && !showEditPet && !showCategories && !showServicesByCategory &&
-                !showBusinessDetail && !showMyBusinesses && !showAddBusiness && !showManageBusiness
-                && !showEditBusiness && !showMyAddresses && !showAddAddress && !showFeaturedServices && !showPetVaccines && !showAddPetVaccine) {
-                BottomNav(
-                    selectedItem = selectedItem,
-                    onItemSelected = { selectedItem = it }
+    Scaffold { innerPadding ->
+
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // ========================================================
+            // PANTALLA SECUNDARIA: INFORMACIÓN PERSONAL
+            // ========================================================
+
+
+            if (showAddPetVaccine && petForVaccines != null) {
+
+                AddPetVaccineScreen(
+                    mascota = petForVaccines!!,
+                    vacunaEditar = vaccineForEdit,
+                    modifier = Modifier.padding(innerPadding),
+
+                    onBack = {
+                        showAddPetVaccine = false
+                        showPetVaccines = true
+                        vaccineForEdit = null
+                    },
+
+                    onSaved = {
+                        showAddPetVaccine = false
+                        showPetVaccines = true
+                        vaccineForEdit = null
+                    }
                 )
-            }
-        }
-    ) { innerPadding ->
 
-        // ========================================================
-        // PANTALLA SECUNDARIA: INFORMACIÓN PERSONAL
-        // ========================================================
+            } else if (showPetVaccines && petForVaccines != null) {
 
 
-        if (showAddPetVaccine && petForVaccines != null) {
+                PetVaccineScreen(
+                    mascota = petForVaccines!!,
+                    modifier = Modifier.padding(innerPadding),
 
-            AddPetVaccineScreen(
-                mascota = petForVaccines!!,
-                vacunaEditar = vaccineForEdit,
-                modifier = Modifier.padding(innerPadding),
+                    onBack = {
+                        showPetVaccines = false
+                        vaccineForEdit = null
 
-                onBack = {
-                    showAddPetVaccine = false
-                    showPetVaccines = true
-                    vaccineForEdit = null
-                },
-
-                onSaved = {
-                    showAddPetVaccine = false
-                    showPetVaccines = true
-                    vaccineForEdit = null
-                }
-            )
-
-        } else if (showPetVaccines && petForVaccines != null) {
-
-
-            PetVaccineScreen(
-                mascota = petForVaccines!!,
-                modifier = Modifier.padding(innerPadding),
-
-                onBack = {
-                    showPetVaccines = false
-                    petForVaccines = null
-                    vaccineForEdit = null
-                    selectedItem = 2
-                },
-
-                onAddVaccine = {
-                    vaccineForEdit = null
-                    showPetVaccines = false
-                    showAddPetVaccine = true
-                },
-
-                onEditVaccine = { vacuna ->
-                    vaccineForEdit = vacuna
-                    showPetVaccines = false
-                    showAddPetVaccine = true
-                }
-
-            )
-
-        } else if (showPersonalInfo) {
-
-            PersonalInfoScreen(
-                modifier = Modifier.padding(innerPadding),
-                onLogout = onLogout,
-                onBack = {
-                    // Al presionar ← volvemos al Perfil.
-                    showPersonalInfo = false
-                }
-            )
-
-        } else if (showAddPet) {
-
-            AddPetScreen(
-                modifier = Modifier.padding(innerPadding),
-                onBack = {
-                    showAddPet = false
-                }
-            )
-        } else if (showEditPet && selectedPet != null) {
-            EditPetScreen(
-                modifier = Modifier.padding(innerPadding),
-                pet = selectedPet!!,
-                onBack = {
-                    showEditPet = false
-                    selectedPet = null
-                }
-            )
-        } else if (showFeaturedServices && !showBusinessDetail) {
-
-            FeaturedServicesScreen(
-                modifier = Modifier.padding(innerPadding),
-                direccionActiva = direccionActiva,
-
-                onBack = {
-                    showFeaturedServices = false
-                    selectedItem = 0
-                },
-
-                onBusinessSelected = { businessId ->
-                    selectedBusinessId = businessId
-
-                    businessDetailFromMap = false
-                    businessDetailFromHome = false
-                    businessDetailFromFeatured = true
-
-                    // Conservamos showFeaturedServices en true
-                    // para regresar al listado después.
-                    showBusinessDetail = true
-                }
-            )
-
-        } else if (showBusinessDetail) {
-
-            BusinessDetailScreen(
-                businessId = selectedBusinessId,
-
-
-                onBack = {
-
-                    showBusinessDetail = false
-
-                    when {
-
-                        businessDetailFromFeatured -> {
-                            // Regresamos al listado completo.
-                            showFeaturedServices = true
-                            selectedItem = 0
-                        }
-
-                        businessDetailFromMap -> {
-                            selectedItem = 1
-                        }
-
-                        businessDetailFromHome -> {
-                            selectedItem = 0
-                        }
-
-                        else -> {
-                            showServicesByCategory = true
-                        }
-                    }
-
-                    // Limpiamos el origen de navegación.
-                    businessDetailFromMap = false
-                    businessDetailFromHome = false
-                    businessDetailFromFeatured = false
-                },
-
-
-                viewModel = businessViewModel
-            )
-
-
-
-        } else if (showServicesByCategory) {
-            ServicesByCategoryScreen(
-                categoryId = selectedCategoryId,
-                onBack = {
-                    showServicesByCategory = false
-                    showCategories = true
-                },
-
-                onBusinessSelected = { businessId ->
-                    selectedBusinessId = businessId
-
-                    // El negocio fue abierto desde Categorías.
-                    businessDetailFromMap = false
-                    businessDetailFromHome = false
-
-                    showServicesByCategory = false
-                    showBusinessDetail = true
-                },
-
-                viewModel = businessViewModel
-            )
-        } else if (showCategories) {
-            CategoriesScreen(
-                onBack = {
-                    showCategories = false
-                },
-                onCategorySelected = { categoryId ->
-                    selectedCategoryId = categoryId
-                    showCategories = false
-                    showServicesByCategory = true
-                }
-            )
-        } else if (showAddBusiness) {
-
-            AddBusinessScreen(
-                modifier = Modifier.padding(innerPadding),
-
-                onBack = {
-                    showAddBusiness = false
-                    showMyBusinesses = true
-                },
-
-                onCreated = {
-                    showAddBusiness = false
-                    showMyBusinesses = true
-                }
-            )
-        } else if (showEditBusiness && businessToManage != null) {
-
-            // ==========================================
-            // EDITAR NEGOCIO DEL PRESTADOR
-            // ==========================================
-
-            EditBusinessScreen(
-                business = businessToManage!!,
-                modifier = Modifier.padding(innerPadding),
-
-                onBack = {
-                    // Cancela la edición y regresa al detalle.
-                    showEditBusiness = false
-                    showManageBusiness = true
-                },
-
-                onUpdated = {
-                    // La actualización fue confirmada por Firestore.
-                    businessSuccessMessage =
-                        "¡Negocio actualizado correctamente!"
-                    // La actualización terminó correctamente.
-                    showEditBusiness = false
-
-                    // Regresamos al listado para consultar
-                    // nuevamente los datos desde Firestore.
-                    businessToManage = null
-                    showManageBusiness = false
-                    showMyBusinesses = true
-                }
-            )
-        } else if (showManageBusiness && businessToManage != null) {
-
-            // ==========================================
-            // DETALLE DEL NEGOCIO DEL PRESTADOR
-            // ==========================================
-
-            ManageBusinessScreen(
-                business = businessToManage!!,
-                modifier = Modifier.padding(innerPadding),
-
-                isDeleting = businessPendingDeletion != null,
-                isConnected = tieneConexion,
-
-                deleteError = businessNetworkError
-                    ?: deleteBusinessUiState.errorMessage,
-
-                onBack = {
-                    showManageBusiness = false
-                    businessToManage = null
-                    showMyBusinesses = true
-                },
-                onEdit = { business ->
-
-                    // Guardamos el negocio que queremos editar.
-                    businessToManage = business
-
-                    // Cerramos el detalle.
-                    showManageBusiness = false
-
-                    // Abrimos el formulario de edición.
-                    showEditBusiness = true
-                },
-
-
-                onDelete = { business ->
-
-                    // Solo permitimos una eliminación a la vez.
-                    if (
-                        businessPendingDeletion == null &&
-                        !deleteBusinessUiState.isLoading
-                    ) {
-
-                        // Limpiamos el error anterior.
-                        businessNetworkError = null
-
-                        // Comprobamos la conectividad antes de eliminar.
-                        if (!NetworkUtils.tieneInternet(context)) {
-
-                            businessNetworkError =
-                                "No tienes conexión a Internet. " +
-                                        "Conéctate para eliminar este establecimiento."
-
+                        if (petForProfile != null) {
+                            showPetProfile = true
                         } else {
-
-                            // Limpiamos resultados anteriores.
-                            deleteBusinessViewModel.limpiarResultadoOperacion()
-
-                            // Iniciamos la eliminación en Firestore.
-                            deleteBusinessViewModel.eliminarNegocio(business)
-
-                            // Identificamos el negocio en proceso.
-                            businessPendingDeletion = business
+                            petForVaccines = null
+                            selectedItem = 2
                         }
+                    },
+
+                    onAddVaccine = {
+                        vaccineForEdit = null
+                        showPetVaccines = false
+                        showAddPetVaccine = true
+                    },
+
+                    onEditVaccine = { vacuna ->
+                        vaccineForEdit = vacuna
+                        showPetVaccines = false
+                        showAddPetVaccine = true
                     }
 
-        }
+                )
 
+            } else if (showPersonalInfo) {
 
-
-            )
-        } else if (showMyBusinesses) {
-
-            MyBusinessesScreen(
-                modifier = Modifier.padding(innerPadding),
-
-                onBack = {
-                    showMyBusinesses = false
-                },
-
-                onAddBusiness = {
-                    showMyBusinesses = false
-                    showAddBusiness = true
-                },
-
-                onBusinessSelected = { business ->
-                    businessToManage = business
-                    showMyBusinesses = false
-                    showManageBusiness = true
-                },
-
-                successMessage = businessSuccessMessage,
-
-                onMessageShown = {
-                    businessSuccessMessage = null
-                }
-            )
-
-        }
-
-        else if (showAddAddress) {
-
-            AddAddressScreen(
-                modifier = Modifier.padding(innerPadding),
-
-                onBack = {
-                    showAddAddress = false
-                    showMyAddresses = true
-                },
-
-                onSelectLocation = {
-                    // El selector MapLibre se administra
-                    // dentro de AddAddressScreen.
-                },
-
-                onSaved = {
-                    // Firestore confirmó el registro.
-                    showAddAddress = false
-                    showMyAddresses = true
-                }
-            )
-        }
-        else if (showMyAddresses) {
-
-            MyAddressesScreen(
-                modifier = Modifier.padding(innerPadding),
-
-                onBack = {
-                    showMyAddresses = false
-                    selectedItem = 0
-                },
-
-                onAddAddress = {
-                    showMyAddresses = false
-                    showAddAddress = true
-                }
-            )
-
-    } else  {
-
-            // ====================================================
-            // PANTALLAS PRINCIPALES
-            // ====================================================
-
-            when (selectedItem) {
-
-                // ------------------------------------------------
-                // INICIO
-                // ------------------------------------------------
-
-                0 -> HomeScreen(
+                PersonalInfoScreen(
+                    modifier = Modifier.padding(innerPadding),
                     onLogout = onLogout,
-                    onViewAllCategories = {
+                    onBack = {
+                        // Al presionar ← volvemos al Perfil.
+                        showPersonalInfo = false
+                    }
+                )
+
+            } else if (showAddPet) {
+
+                AddPetScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    onBack = {
+                        showAddPet = false
+                    }
+                )
+            } else if (showEditPet && selectedPet != null) {
+
+                EditPetScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    pet = selectedPet!!,
+                    petsViewModel = petsViewModel,
+                    onBack = {
+                        showEditPet = false
+
+                        if (editPetFromInformation) {
+                            showPetProfile = true
+                            showPetInformation = true
+
+                            // Conservamos la mascota seleccionada.
+                            editPetFromInformation = false
+                        }
+
+                        selectedPet = null
+                    }
+
+                )
+            } else if (showFeaturedServices && !showBusinessDetail) {
+
+                FeaturedServicesScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    direccionActiva = direccionActiva,
+
+                    onBack = {
+                        showFeaturedServices = false
+                        selectedItem = 0
+                    },
+
+                    onBusinessSelected = { businessId ->
+                        selectedBusinessId = businessId
+
+                        businessDetailFromMap = false
+                        businessDetailFromHome = false
+                        businessDetailFromFeatured = true
+
+                        // Conservamos showFeaturedServices en true
+                        // para regresar al listado después.
+                        showBusinessDetail = true
+                    }
+                )
+
+            } else if (showBusinessDetail) {
+
+                BusinessDetailScreen(
+                    businessId = selectedBusinessId,
+
+
+                    onBack = {
+
+                        showBusinessDetail = false
+
+                        when {
+
+                            businessDetailFromFeatured -> {
+                                // Regresamos al listado completo.
+                                showFeaturedServices = true
+                                selectedItem = 0
+                            }
+
+                            businessDetailFromMap -> {
+                                selectedItem = 1
+                            }
+
+                            businessDetailFromHome -> {
+                                selectedItem = 0
+                            }
+
+                            else -> {
+                                showServicesByCategory = true
+                            }
+                        }
+
+                        // Limpiamos el origen de navegación.
+                        businessDetailFromMap = false
+                        businessDetailFromHome = false
+                        businessDetailFromFeatured = false
+                    },
+
+
+                    viewModel = businessViewModel
+                )
+
+
+            } else if (showServicesByCategory) {
+                ServicesByCategoryScreen(
+                    categoryId = selectedCategoryId,
+                    onBack = {
+                        showServicesByCategory = false
                         showCategories = true
+                    },
+
+                    onBusinessSelected = { businessId ->
+                        selectedBusinessId = businessId
+
+                        // El negocio fue abierto desde Categorías.
+                        businessDetailFromMap = false
+                        businessDetailFromHome = false
+
+                        showServicesByCategory = false
+                        showBusinessDetail = true
+                    },
+
+                    viewModel = businessViewModel
+                )
+            } else if (showCategories) {
+                CategoriesScreen(
+                    onBack = {
+                        showCategories = false
                     },
                     onCategorySelected = { categoryId ->
                         selectedCategoryId = categoryId
                         showCategories = false
                         showServicesByCategory = true
+                    }
+                )
+            } else if (showAddBusiness) {
+
+                AddBusinessScreen(
+                    modifier = Modifier.padding(innerPadding),
+
+                    onBack = {
+                        showAddBusiness = false
+                        showMyBusinesses = true
                     },
-                    direccionActiva = direccionActiva,
-                    onAddressesClick = {
+
+                    onCreated = {
+                        showAddBusiness = false
+                        showMyBusinesses = true
+                    }
+                )
+            } else if (showEditBusiness && businessToManage != null) {
+
+                // ==========================================
+                // EDITAR NEGOCIO DEL PRESTADOR
+                // ==========================================
+
+                EditBusinessScreen(
+                    business = businessToManage!!,
+                    modifier = Modifier.padding(innerPadding),
+
+                    onBack = {
+                        // Cancela la edición y regresa al detalle.
+                        showEditBusiness = false
+                        showManageBusiness = true
+                    },
+
+                    onUpdated = {
+                        // La actualización fue confirmada por Firestore.
+                        businessSuccessMessage =
+                            "¡Negocio actualizado correctamente!"
+                        // La actualización terminó correctamente.
+                        showEditBusiness = false
+
+                        // Regresamos al listado para consultar
+                        // nuevamente los datos desde Firestore.
+                        businessToManage = null
+                        showManageBusiness = false
+                        showMyBusinesses = true
+                    }
+                )
+            } else if (showManageBusiness && businessToManage != null) {
+
+                // ==========================================
+                // DETALLE DEL NEGOCIO DEL PRESTADOR
+                // ==========================================
+
+                ManageBusinessScreen(
+                    business = businessToManage!!,
+                    modifier = Modifier.padding(innerPadding),
+
+                    isDeleting = businessPendingDeletion != null,
+                    isConnected = tieneConexion,
+
+                    deleteError = businessNetworkError
+                        ?: deleteBusinessUiState.errorMessage,
+
+                    onBack = {
+                        showManageBusiness = false
+                        businessToManage = null
+                        showMyBusinesses = true
+                    },
+                    onEdit = { business ->
+
+                        // Guardamos el negocio que queremos editar.
+                        businessToManage = business
+
+                        // Cerramos el detalle.
+                        showManageBusiness = false
+
+                        // Abrimos el formulario de edición.
+                        showEditBusiness = true
+                    },
+
+
+                    onDelete = { business ->
+
+                        // Solo permitimos una eliminación a la vez.
+                        if (
+                            businessPendingDeletion == null &&
+                            !deleteBusinessUiState.isLoading
+                        ) {
+
+                            // Limpiamos el error anterior.
+                            businessNetworkError = null
+
+                            // Comprobamos la conectividad antes de eliminar.
+                            if (!NetworkUtils.tieneInternet(context)) {
+
+                                businessNetworkError =
+                                    "No tienes conexión a Internet. " +
+                                            "Conéctate para eliminar este establecimiento."
+
+                            } else {
+
+                                // Limpiamos resultados anteriores.
+                                deleteBusinessViewModel.limpiarResultadoOperacion()
+
+                                // Iniciamos la eliminación en Firestore.
+                                deleteBusinessViewModel.eliminarNegocio(business)
+
+                                // Identificamos el negocio en proceso.
+                                businessPendingDeletion = business
+                            }
+                        }
+
+                    }
+
+
+                )
+            } else if (showMyBusinesses) {
+
+                MyBusinessesScreen(
+                    modifier = Modifier.padding(innerPadding),
+
+                    onBack = {
+                        showMyBusinesses = false
+                    },
+
+                    onAddBusiness = {
+                        showMyBusinesses = false
+                        showAddBusiness = true
+                    },
+
+                    onBusinessSelected = { business ->
+                        businessToManage = business
+                        showMyBusinesses = false
+                        showManageBusiness = true
+                    },
+
+                    successMessage = businessSuccessMessage,
+
+                    onMessageShown = {
+                        businessSuccessMessage = null
+                    }
+                )
+
+            } else if (showAddAddress) {
+
+                AddAddressScreen(
+                    modifier = Modifier.padding(innerPadding),
+
+                    onBack = {
+                        showAddAddress = false
                         showMyAddresses = true
                     },
-                    onBusinessSelected = { businessId ->
 
-                        selectedBusinessId = businessId
-
-                        // El usuario abrió el negocio desde Inicio,
-                        // no desde el mapa ni desde categorías.
-                        businessDetailFromMap = false
-                        businessDetailFromHome = true
-                        showServicesByCategory = false
-                        showBusinessDetail = true
-                    },
-                    onViewAllFeatured = {
-                        showFeaturedServices = true
-                    },
-                    nombreUsuario = nombreUsuario,
-                    modifier = Modifier.padding(innerPadding)
-                )
-
-
-                // ------------------------------------------------
-                // MAPA
-                // ------------------------------------------------
-
-                1 -> MapScreen(
-                    modifier = Modifier.padding(innerPadding),
-
-                    ubicacionGuardada = ubicacionUsuarioMapa,
-
-                    onUbicacionActualizada = { ubicacion ->
-                        ubicacionUsuarioMapa = ubicacion
+                    onSelectLocation = {
+                        // El selector MapLibre se administra
+                        // dentro de AddAddressScreen.
                     },
 
-                    posicionCamaraGuardada = posicionCamaraMapa,
-
-                    onPosicionCamaraActualizada = { posicion ->
-                        posicionCamaraMapa = posicion
-                    },
-
-
-                    onBusinessSelected = { businessId ->
-
-                        selectedBusinessId = businessId
-
-                        // El negocio fue abierto desde Mapa.
-                        businessDetailFromMap = true
-                        businessDetailFromHome = false
-
-                        showBusinessDetail = true
+                    onSaved = {
+                        // Firestore confirmó el registro.
+                        showAddAddress = false
+                        showMyAddresses = true
                     }
+                )
+            } else if (showMyAddresses) {
 
+                MyAddressesScreen(
+                    modifier = Modifier.padding(innerPadding),
+
+                    onBack = {
+                        showMyAddresses = false
+                        selectedItem = 0
+                    },
+
+                    onAddAddress = {
+                        showMyAddresses = false
+                        showAddAddress = true
+                    }
                 )
 
+            } else if (showPetInformation && petForProfile != null) {
 
-                // ------------------------------------------------
-                // MASCOTAS
-                // ------------------------------------------------
-
-                2 -> PetsScreen(
+                PetInformationScreen(
+                    mascota = petForProfile!!,
                     modifier = Modifier.padding(innerPadding),
-                    onAddPet = {
-                        showAddPet = true
+
+                    onBack = {
+                        showPetInformation = false
                     },
-                    onEditPet = { pet ->
-                        // Guarda la mascota seleccionada.
-                        selectedPet = pet
-                        // Indica que debe abrir la pantalla de edición.
+
+                    onEdit = {
+                        selectedPet = petForProfile
+                        editPetFromInformation = true
+
+                        showPetInformation = false
+                        showPetProfile = false
                         showEditPet = true
                     },
-                    onViewVaccines = { mascota ->
-                        petForVaccines = mascota
-                        showPetVaccines = true
-                    },
-                    onDeletePet = { pet ->
 
-                        // Guardamos cuál mascota quiere eliminar el usuario.
-                        petToDelete = pet
-
-                        // Mostramos posteriormente el diálogo de confirmación.
-                        showDeleteDialog = true
-
+                    onDelete = {
+                        petForProfile?.let { mascota ->
+                            petPendingDeletionId = mascota.id
+                            petsViewModel.limpiarResultadoOperacion()
+                            petsViewModel.eliminarMascota(mascota)
+                        }
                     }
                 )
 
-                // ------------------------------------------------
-                // INTELIGENCIA ARTIFICIAL
-                // ------------------------------------------------
+            } else if (showPetProfile && petForProfile != null) {
 
-                3 -> AIScreen(
-                    modifier = Modifier.padding(innerPadding)
-                )
-
-                // ------------------------------------------------
-                // PERFIL
-                // ------------------------------------------------
-
-                4 -> ProfileScreen(
-
+                PetProfileScreen(
+                    mascota = petForProfile!!,
                     modifier = Modifier.padding(innerPadding),
 
-                    onLogout = onLogout,
-
-                    // Al tocar "Información personal"
-                    // abrimos PersonalInfoScreen.
-                    onPersonalInfo = {
-                        showPersonalInfo = true
-                    },
-
-                    // Al tocar "Mis mascotas"
-                    // cambiamos a la sección Mascotas
-                    // del BottomNav.
-                    onPets = {
+                    onBack = {
+                        showPetProfile = false
+                        showPetInformation = false
+                        petForProfile = null
                         selectedItem = 2
                     },
 
-                    onBusinesses = {
-                        showMyBusinesses = true
+                    onInformation = {
+                        showPetInformation = true
+                    },
+
+                    onVaccines = {
+                        petForVaccines = petForProfile
+                        showPetProfile = false
+                        showPetVaccines = true
                     }
-
-
                 )
-            }
-        }
-    }
-    // Diálogo de confirmación
-    // ============================================================
-    // DIÁLOGO DE CONFIRMACIÓN PARA ELIMINAR
-    // ============================================================
-    // Solo mostramos el diálogo cuando:
-    // 1. El usuario seleccionó una mascota para eliminar.
-    // 2. showDeleteDialog es true.
-    //
-    // Todavía NO eliminamos nada aquí.
-    // Primero le damos al usuario la posibilidad de cancelar.
-    // ============================================================
 
-    if (showDeleteDialog && petToDelete != null) {
+            } else {
 
-        AlertDialog(
+                // ====================================================
+                // PANTALLAS PRINCIPALES
+                // ====================================================
 
-            // ----------------------------------------------------
-            // Se ejecuta cuando el usuario cierra el diálogo.
-            // En este caso simplemente cancelamos la operación.
-            // ----------------------------------------------------
-            onDismissRequest = {
-                showDeleteDialog = false
-                petToDelete = null
-            },
+                when (selectedItem) {
 
-            // ----------------------------------------------------
-            // TÍTULO DEL DIÁLOGO
-            // ----------------------------------------------------
-            title = {
-                Text("¿Eliminar mascota?")
-            },
+                    // ------------------------------------------------
+                    // INICIO
+                    // ------------------------------------------------
 
-            // ----------------------------------------------------
-            // MENSAJE
-            // ----------------------------------------------------
-            text = {
-                Text(
-                    "¿Estás seguro de que deseas eliminar " +
-                            "${petToDelete?.nombre}?"
-                )
-            },
+                    0 -> HomeScreen(
+                        onLogout = onLogout,
+                        onViewAllCategories = {
+                            showCategories = true
+                        },
+                        onCategorySelected = { categoryId ->
+                            selectedCategoryId = categoryId
+                            showCategories = false
+                            showServicesByCategory = true
+                        },
+                        direccionActiva = direccionActiva,
+                        onAddressesClick = {
+                            showMyAddresses = true
+                        },
+                        onBusinessSelected = { businessId ->
 
-            // ----------------------------------------------------
-            // BOTÓN CANCELAR
-            // ----------------------------------------------------
-            dismissButton = {
+                            selectedBusinessId = businessId
 
-                TextButton(
-                    onClick = {
+                            // El usuario abrió el negocio desde Inicio,
+                            // no desde el mapa ni desde categorías.
+                            businessDetailFromMap = false
+                            businessDetailFromHome = true
+                            showServicesByCategory = false
+                            showBusinessDetail = true
+                        },
+                        onViewAllFeatured = {
+                            showFeaturedServices = true
+                        },
+                        nombreUsuario = nombreUsuario,
+                        modifier = Modifier.padding(
+                            top = innerPadding.calculateTopPadding()
+                        )
+                    )
 
-                        // Cerramos el diálogo.
-                        showDeleteDialog = false
 
-                        // Ya no hay una mascota pendiente
-                        // de eliminación.
-                        petToDelete = null
-                    }
-                ) {
-                    Text("Cancelar")
-                }
-            },
+                    // ------------------------------------------------
+                    // MAPA
+                    // ------------------------------------------------
 
-            // ----------------------------------------------------
-            // BOTÓN ELIMINAR
-            // ----------------------------------------------------
-            confirmButton = {
+                    1 -> MapScreen(
+                        modifier = Modifier.padding(
+                            top = innerPadding.calculateTopPadding()
+                        ),
 
-                TextButton(
-                    onClick = {
+                        ubicacionGuardada = ubicacionUsuarioMapa,
 
-                        petToDelete?.let { pet ->
+                        onUbicacionActualizada = { ubicacion ->
+                            ubicacionUsuarioMapa = ubicacion
+                        },
 
-                            // Enviamos la mascota seleccionada al ViewModel.
-                            // El ViewModel se encarga de ejecutar la eliminación.
-                            petsViewModel.eliminarMascota(pet)
+                        posicionCamaraGuardada = posicionCamaraMapa,
+
+                        onPosicionCamaraActualizada = { posicion ->
+                            posicionCamaraMapa = posicion
+                        },
+
+
+                        onBusinessSelected = { businessId ->
+
+                            selectedBusinessId = businessId
+
+                            // El negocio fue abierto desde Mapa.
+                            businessDetailFromMap = true
+                            businessDetailFromHome = false
+
+                            showBusinessDetail = true
                         }
 
-                        // Cerramos el diálogo.
-                        showDeleteDialog = false
+                    )
 
-                        // Ya no necesitamos conservar la mascota seleccionada.
-                        petToDelete = null
-                    }
-                ) {
-                    Text("Eliminar")
+
+                    // ------------------------------------------------
+                    // MASCOTAS
+                    // ------------------------------------------------
+
+                    2 -> PetsScreen(
+                        modifier = Modifier.padding(
+                            top = innerPadding.calculateTopPadding()
+                        ),
+                        onAddPet = {
+                            showAddPet = true
+                        },
+                        onEditPet = { pet ->
+                            // Guarda la mascota seleccionada.
+                            selectedPet = pet
+                            // Indica que debe abrir la pantalla de edición.
+                            showEditPet = true
+                        },
+                        onViewVaccines = { mascota ->
+                            petForVaccines = mascota
+                            showPetVaccines = true
+                        },
+                        onDeletePet = { pet ->
+
+                            // Guardamos cuál mascota quiere eliminar el usuario.
+                            petToDelete = pet
+
+                            // Mostramos posteriormente el diálogo de confirmación.
+                            showDeleteDialog = true
+
+                        },
+                        onPetSelected = { mascota ->
+                            petForProfile = mascota
+                            showPetProfile = true
+                        }
+                    )
+
+                    // ------------------------------------------------
+                    // INTELIGENCIA ARTIFICIAL
+                    // ------------------------------------------------
+
+                    3 -> AIScreen(
+                        modifier = Modifier.padding(
+                            top = innerPadding.calculateTopPadding()
+                        )
+                    )
+
+                    // ------------------------------------------------
+                    // PERFIL
+                    // ------------------------------------------------
+
+                    4 -> ProfileScreen(
+
+                        modifier = Modifier.padding(
+                            top = innerPadding.calculateTopPadding()
+                        ),
+
+                        onLogout = onLogout,
+
+                        // Al tocar "Información personal"
+                        // abrimos PersonalInfoScreen.
+                        onPersonalInfo = {
+                            showPersonalInfo = true
+                        },
+
+                        // Al tocar "Mis mascotas"
+                        // cambiamos a la sección Mascotas
+                        // del BottomNav.
+                        onPets = {
+                            selectedItem = 2
+                        },
+
+                        onBusinesses = {
+                            showMyBusinesses = true
+                        }
+
+
+                    )
                 }
+
+                // =============================================
+                // NAVBAR FLOTANTE
+                // =============================================
+
+                if (mostrarNavbar) {
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                    ) {
+                        BottomNav(
+                            selectedItem = selectedItem,
+                            onItemSelected = { index ->
+                                selectedItem = index
+                            }
+                        )
+                    }
+                }
+
             }
-        )
+        }
+        // Diálogo de confirmación
+        // ============================================================
+        // DIÁLOGO DE CONFIRMACIÓN PARA ELIMINAR
+        // ============================================================
+        // Solo mostramos el diálogo cuando:
+        // 1. El usuario seleccionó una mascota para eliminar.
+        // 2. showDeleteDialog es true.
+        //
+        // Todavía NO eliminamos nada aquí.
+        // Primero le damos al usuario la posibilidad de cancelar.
+        // ============================================================
+
+        if (showDeleteDialog && petToDelete != null) {
+
+            AlertDialog(
+
+                // ----------------------------------------------------
+                // Se ejecuta cuando el usuario cierra el diálogo.
+                // En este caso simplemente cancelamos la operación.
+                // ----------------------------------------------------
+                onDismissRequest = {
+                    showDeleteDialog = false
+                    petToDelete = null
+                },
+
+                // ----------------------------------------------------
+                // TÍTULO DEL DIÁLOGO
+                // ----------------------------------------------------
+                title = {
+                    Text("¿Eliminar mascota?")
+                },
+
+                // ----------------------------------------------------
+                // MENSAJE
+                // ----------------------------------------------------
+                text = {
+                    Text(
+                        "¿Estás seguro de que deseas eliminar " +
+                                "${petToDelete?.nombre}?"
+                    )
+                },
+
+                // ----------------------------------------------------
+                // BOTÓN CANCELAR
+                // ----------------------------------------------------
+                dismissButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            // Cerramos el diálogo.
+                            showDeleteDialog = false
+
+                            // Ya no hay una mascota pendiente
+                            // de eliminación.
+                            petToDelete = null
+                        }
+                    ) {
+                        Text("Cancelar")
+                    }
+                },
+
+                // ----------------------------------------------------
+                // BOTÓN ELIMINAR
+                // ----------------------------------------------------
+                confirmButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            petToDelete?.let { pet ->
+
+                                // Enviamos la mascota seleccionada al ViewModel.
+                                // El ViewModel se encarga de ejecutar la eliminación.
+                                petsViewModel.eliminarMascota(pet)
+                            }
+
+                            // Cerramos el diálogo.
+                            showDeleteDialog = false
+
+                            // Ya no necesitamos conservar la mascota seleccionada.
+                            petToDelete = null
+                        }
+                    ) {
+                        Text("Eliminar")
+                    }
+                }
+            )
+        }
     }
 }

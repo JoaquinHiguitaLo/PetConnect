@@ -30,6 +30,27 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pets
+import java.text.Normalizer
+import java.util.Locale
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+
+
+private fun normalizarTexto(texto: String): String {
+    val textoNormalizado = Normalizer.normalize(
+        texto.trim().lowercase(Locale.ROOT),
+        Normalizer.Form.NFD
+    )
+
+    return textoNormalizado.replace(
+        Regex("\\p{M}+"),
+        ""
+    )
+}
+
 
 @Composable
 fun PetsScreen(
@@ -37,7 +58,8 @@ fun PetsScreen(
     onAddPet: () -> Unit = {},
     onEditPet: (Pet) -> Unit = {},
     onDeletePet: (Pet) -> Unit,
-    onViewVaccines: (Pet) -> Unit = {}
+    onViewVaccines: (Pet) -> Unit = {},
+    onPetSelected: (Pet) -> Unit = {}
 ) {
 
     // ViewModel encargado de manejar las mascotas.
@@ -45,6 +67,37 @@ fun PetsScreen(
 
     // Observamos el estado del ViewModel.
     val uiState by petsViewModel.uiState.collectAsState()
+
+    var buscadorVisible by remember {
+        mutableStateOf(false)
+    }
+
+    var textoBusqueda by remember {
+        mutableStateOf("")
+    }
+
+    val mascotasFiltradas = remember(
+        uiState.pets,
+        textoBusqueda
+    ) {
+        val consulta = normalizarTexto(textoBusqueda)
+
+        if (consulta.isBlank()) {
+            uiState.pets
+        } else {
+            uiState.pets.filter { mascota ->
+
+                val nombre = normalizarTexto(mascota.nombre)
+                val especie = normalizarTexto(mascota.especie)
+                val raza = normalizarTexto(mascota.raza ?: "")
+
+                nombre.contains(consulta) ||
+                        especie.contains(consulta) ||
+                        raza.contains(consulta)
+            }
+        }
+    }
+
 
     // Cargamos las mascotas cuando se muestra la pantalla.
     LaunchedEffect(Unit) {
@@ -67,108 +120,165 @@ fun PetsScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
 
-        PetsHeader(
-            cantidadMascotas = uiState.pets.size
-        )
-
         PetsContent(
-            pets = uiState.pets,
+            pets = mascotasFiltradas,
+            cantidadTotalMascotas = uiState.pets.size,
+            buscadorVisible = buscadorVisible,
+            textoBusqueda = textoBusqueda,
+
+            onToggleSearch = {
+                buscadorVisible = !buscadorVisible
+
+                if (!buscadorVisible) {
+                    textoBusqueda = ""
+                }
+            },
+
+            onQueryChange = { nuevaBusqueda ->
+                textoBusqueda = nuevaBusqueda
+            },
+
             onAddPet = onAddPet,
             onEditPet = onEditPet,
             onDeletePet = onDeletePet,
-            onViewVaccines = onViewVaccines
+            onViewVaccines = onViewVaccines,
+            onPetSelected = onPetSelected
         )
+
     }
 }
 
+
+
 @Composable
 private fun PetsHeader(
-    cantidadMascotas: Int
+    cantidadMascotas: Int,
+    buscadorVisible: Boolean,
+    textoBusqueda: String,
+    onToggleSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onAddPet: () -> Unit
 ) {
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.primary
-            )
+            .background(MaterialTheme.colorScheme.background)
             .padding(
                 start = 20.dp,
                 end = 20.dp,
-                top = 28.dp,
-                bottom = 24.dp
+                top = 8.dp,
+                bottom = 12.dp
             )
     ) {
 
+        Text(
+            text = "Mascotas",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Tus compañeros de aventuras",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            Column(
-                modifier = Modifier.weight(1f)
+            Surface(
+                shape = RoundedCornerShape(50.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
-
                 Text(
-                    text = "TUS COMPAÑEROS",
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    fontSize = 14.sp,
-                    letterSpacing = 0.5.sp
-                )
-
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
-
-                Text(
-                    text = "Mis Mascotas",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
+                    text = if (cantidadMascotas == 1) {
+                        "1 mascota"
+                    } else {
+                        "$cantidadMascotas mascotas"
+                    },
+                    modifier = Modifier.padding(
+                        horizontal = 14.dp,
+                        vertical = 9.dp
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(
-                    alpha = 0.35f
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
 
-                Text(
-                    text = "•••",
-                    modifier = Modifier.padding(
-                        horizontal = 16.dp,
-                        vertical = 12.dp
-                    ),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                IconButton(
+                    onClick =  onToggleSearch
+                ) {
+                    Icon(
+                        imageVector = if (buscadorVisible) {
+                            Icons.Default.Close
+                        } else {
+                            Icons.Default.Search
+                        },
+                        contentDescription = if (buscadorVisible) {
+                            "Cerrar búsqueda"
+                        } else {
+                            "Buscar mascotas"
+                        },
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                FilledIconButton(
+                    onClick = onAddPet,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor =
+                            MaterialTheme.colorScheme.primary,
+                        contentColor =
+                            MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Agregar mascota"
+                    )
+                }
             }
         }
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
+        if (buscadorVisible) {
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+            Spacer(modifier = Modifier.height(12.dp))
 
-
-            SummaryChip(
-                text = if (cantidadMascotas == 1) {
-                    "1 mascota"
-                } else {
-                    "$cantidadMascotas mascotas"
+            OutlinedTextField(
+                value = textoBusqueda,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text("Buscar por nombre o raza...")
                 },
-                color = MaterialTheme.colorScheme.primaryContainer
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp)
             )
-
         }
     }
 }
+
 
 @Composable
 private fun SummaryChip(
@@ -192,14 +302,22 @@ private fun SummaryChip(
     }
 }
 
+
 @Composable
 private fun PetsContent(
     pets: List<Pet>,
+    cantidadTotalMascotas: Int,
+    buscadorVisible: Boolean,
+    textoBusqueda: String,
+    onToggleSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
     onAddPet: () -> Unit,
     onEditPet: (Pet) -> Unit,
     onDeletePet: (Pet) -> Unit,
-    onViewVaccines: (Pet) -> Unit
+    onViewVaccines: (Pet) -> Unit,
+    onPetSelected: (Pet) -> Unit
 ) {
+
 
     // Fotografías temporales por ID de mascota.
     val fotosMascotas = remember {
@@ -251,15 +369,31 @@ private fun PetsContent(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                horizontal = 20.dp,
-                vertical = 20.dp
+                start = 20.dp,
+                end = 20.dp,
+                top = 0.dp,
+                bottom = 120.dp
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            items(petsUi) { petUi ->
+            item {
+                PetsHeader(
+                    cantidadMascotas = cantidadTotalMascotas,
+                    buscadorVisible = buscadorVisible,
+                    textoBusqueda = textoBusqueda,
+                    onToggleSearch = onToggleSearch,
+                    onQueryChange = onQueryChange,
+                    onAddPet = onAddPet
+                )
+            }
 
-                val petOriginal = pets.firstOrNull {
+            items(
+                items = petsUi,
+                key = { it.id }
+            ) { petUi ->
+
+            val petOriginal = pets.firstOrNull {
                     it.id == petUi.id
                 }
 
@@ -290,31 +424,55 @@ private fun PetsContent(
                         petOriginal?.let { mascota ->
                             onViewVaccines(mascota)
                         }
+                    },
+
+                    onOpenProfile = {
+                        petOriginal?.let { mascota ->
+                            onPetSelected(mascota)
+                        }
                     }
 
                 )
 
             }
 
-            item {
-                Spacer(
-                    modifier = Modifier.height(70.dp)
-                )
-            }
-        }
+            if (pets.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "🐾",
+                            fontSize = 36.sp
+                        )
 
-        FloatingActionButton(
-            onClick = onAddPet,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp),
-            containerColor = MaterialTheme.colorScheme.tertiary,
-            contentColor = MaterialTheme.colorScheme.onTertiary
-        ) {
-            Text(
-                text = "+",
-                fontSize = 30.sp
-            )
+                        Text(
+                            text = if (textoBusqueda.isNotBlank()) {
+                                "No encontramos mascotas"
+                            } else {
+                                "Todavía no tienes mascotas"
+                            },
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Text(
+                            text = if (textoBusqueda.isNotBlank()) {
+                                "Prueba buscando otro nombre, especie o raza."
+                            } else {
+                                "Agrega tu primera mascota con el botón +."
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+
         }
     }
 }
@@ -330,6 +488,7 @@ private data class PetUi(
     val vaccinated: Boolean
 )
 
+
 @Composable
 private fun PetCard(
     pet: PetUi,
@@ -337,248 +496,107 @@ private fun PetCard(
     onSelectPhoto: () -> Unit,
     onEditPet: () -> Unit,
     onDeletePet: () -> Unit,
-    onViewVaccines: () -> Unit
+    onViewVaccines: () -> Unit,
+    onOpenProfile: () -> Unit
 ) {
+    val context = LocalContext.current
 
-    var expanded by remember { mutableStateOf(false) }
+    val fotoBitmap = remember(fotoUri) {
+        fotoUri?.let { uri ->
+            try {
+                context.contentResolver
+                    .openInputStream(uri)
+                    ?.use { stream ->
+                        BitmapFactory.decodeStream(stream)
+                    }
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
 
     Card(
+        onClick = onOpenProfile,
         modifier = Modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 3.dp
-        ),
-        onClick = {
-            expanded = !expanded
-        }
+            defaultElevation = 2.dp
+        )
     ) {
-
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
 
-            // =====================================================
-            // INFORMACIÓN PRINCIPAL DE LA MASCOTA
-            // =====================================================
-
-            Row(
+            // Avatar
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFFB9E7E4)),
+                contentAlignment = Alignment.Center
             ) {
-
-                // Foto / representación de la mascota
-                val context = LocalContext.current
-
-                val fotoBitmap = remember(fotoUri) {
-                    fotoUri?.let { uri ->
-                        try {
-                            context.contentResolver
-                                .openInputStream(uri)
-                                ?.use { stream ->
-                                    BitmapFactory.decodeStream(stream)
-                                }
-                        } catch (e: Exception) {
-                            null
-                        }
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer
-                        )
-                        .clickable {
-                            onSelectPhoto()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-
-                    if (fotoBitmap != null) {
-
-                        Image(
-                            bitmap = fotoBitmap.asImageBitmap(),
-                            contentDescription = "Foto de ${pet.name}",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-
-                    } else {
-
-                        Text(
-                            text = pet.emoji,
-                            fontSize = 38.sp
-                        )
-                    }
-                }
-
-
-                Spacer(
-                    modifier = Modifier.width(16.dp)
-                )
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Text(
-                            text = pet.name,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(8.dp)
-                        )
-
-                    }
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
+                if (fotoBitmap != null) {
+                    Image(
+                        bitmap = fotoBitmap.asImageBitmap(),
+                        contentDescription = "Foto de ${pet.name}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-
+                } else {
                     Text(
-                        text = "${pet.species} · ${pet.breed}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 16.sp
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(4.dp)
-                    )
-
-                    Text(
-                        text = "${pet.age} · ${pet.size}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 16.sp
+                        text = pet.emoji,
+                        fontSize = 30.sp
                     )
                 }
+            }
 
-                // Flecha que indica si la tarjeta está abierta o cerrada
+            // Información principal
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
-                    text = if (expanded) "▴" else "▾",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 18.sp
+                    text = pet.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF202020),
+                    maxLines = 1
+                )
+
+                Text(
+                    text = "${pet.species} · ${pet.breed}",
+                    fontSize = 13.sp,
+                    color = Color(0xFF777777),
+                    maxLines = 1
+                )
+
+                Text(
+                    text = "${pet.age} · ${pet.size}",
+                    fontSize = 13.sp,
+                    color = Color(0xFF227C78),
+                    maxLines = 1
                 )
             }
 
-            // =====================================================
-            // INFORMACIÓN ADICIONAL
-            // Solo aparece cuando la tarjeta está expandida
-            // =====================================================
-
-            if (expanded) {
-
-                HorizontalDivider()
-
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
-
-                Button(
-                    onClick = onViewVaccines,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF227C78)
-                    ),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text(
-                        text = "💉  Carnet de vacunación",
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
-
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-
-                    PetInfoBox(
-                        title = "Edad",
-                        value = pet.age,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    PetInfoBox(
-                        title = "Tamaño",
-                        value = pet.size,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                }
-
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            horizontal = 20.dp,
-                            vertical = 4.dp
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-
-                    OutlinedButton(
-                        onClick = {
-                            // Por ahora solamente visual.
-                            // Más adelante navegará a servicios.
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Ver servicios")
-                    }
-
-                    Button(
-                        onClick = onEditPet,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Editar mascota")
-                    }
-                    IconButton(
-                        onClick = onDeletePet,
-                        modifier = Modifier
-                            .size(45.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFFFE5E5))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar mascota",
-                            tint = Color(0xFFE53935)
-                        )
-                    }
-                }
-
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
-            }
+            Icon(
+                imageVector =
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "Abrir perfil de ${pet.name}",
+                tint = Color(0xFF227C78),
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

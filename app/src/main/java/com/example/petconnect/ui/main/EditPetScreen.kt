@@ -44,13 +44,16 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.*
+import com.example.petconnect.ui.components.PetConnectTopBar
+import androidx.compose.material3.MaterialTheme
 
 
 @Composable
 fun EditPetScreen(
     modifier: Modifier = Modifier,
     pet: Pet,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    petsViewModel: PetsViewModel = viewModel()
 ) {
 
     // ============================================================
@@ -110,7 +113,18 @@ fun EditPetScreen(
         mutableStateOf(pet.tamano)
     }
 
-    val petsViewModel: PetsViewModel = viewModel()
+    var fechaNacimiento by remember {
+        mutableStateOf(pet.fechaNacimiento ?: "")
+    }
+
+    var sexo by remember {
+        mutableStateOf(pet.sexo ?: "")
+    }
+
+    var peso by remember {
+        mutableStateOf(pet.pesoKg?.toString() ?: "")
+    }
+
     val uiState by petsViewModel.uiState.collectAsState()
 
     LaunchedEffect(uiState.operationSuccess) {
@@ -134,61 +148,23 @@ fun EditPetScreen(
         // ENCABEZADO
         // ============================================================
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = Color(0xFF227C78)
-                )
-                .padding(
-                    horizontal = 20.dp,
-                    vertical = 24.dp
-                )
-        ) {
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        PetConnectTopBar(
+            onBack = onBack
+        )
 
-                Button(
-                    onClick = onBack,
-                    modifier = Modifier.size(48.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4C918D)
-                    )
-                ) {
-                    Text(
-                        text = "←",
-                        color = Color.White,
-                        fontSize = 26.sp
-                    )
-                }
+        Spacer(modifier = Modifier.height(8.dp))
 
-                Spacer(
-                    modifier = Modifier.size(16.dp)
-                )
+        Text(
+            text = "Editar mascota",
+            color = Color(0xFF227C78),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
 
-                Column {
+        Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = "NUEVA MASCOTA",
-                        color = Color(0xFFB5E3E1),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Text(
-                        text = "Editar mascota",
-                        color = Color.White,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
 
 
         // ============================================================
@@ -199,8 +175,8 @@ fun EditPetScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    horizontal = 20.dp,
-                    vertical = 24.dp
+                    horizontal = 24.dp,
+                    vertical = 8.dp
                 ),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
@@ -209,317 +185,80 @@ fun EditPetScreen(
             // FOTO
             // ========================================================
 
+
             Box(
                 modifier = Modifier
-                    .size(125.dp)
+                    .size(width = 180.dp, height = 130.dp)
                     .align(Alignment.CenterHorizontally)
                     .background(
-                        color = Color(0xFFF0EEE6),
-                        shape = CircleShape
+                        color = Color(0xFFB9E7E4),
+                        shape = RoundedCornerShape(20.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
-                    Text(
-                        text = "📷",
-                        fontSize = 32.sp
-                    )
-
-                    Text(
-                        text = "Subir foto",
-                        color = Color(0xFF777777),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-
-
-            // ========================================================
-            // NOMBRE
-            // ========================================================
-
-            PetFieldLabel(
-                text = "Nombre de tu mascota",
-                required = true
-            )
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = {
-                    name = it
-                },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = {
-                    Text("Ej: Luna, Michi, Coco...")
-                },
-                shape = RoundedCornerShape(16.dp),
-                singleLine = true
-            )
-
-
-            // ========================================================
-            // ESPECIE
-            // ========================================================
-
-            PetFieldLabel(
-                text = "Especie",
-                required = true
-            )
-
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // --------------------------------------------------------
-                // CAMPO VISUAL
-                // --------------------------------------------------------
-                // El campo es solo de lectura porque la especie se
-                // selecciona desde una lista y no se escribe manualmente.
-
-                OutlinedTextField(
-                    value = species,
-                    onValueChange = { },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            speciesExpanded = true
-                        },
-                    placeholder = {
-                        Text("Selecciona la especie")
+                Text(
+                    text = when (species.lowercase()) {
+                        "perro" -> "🐕"
+                        "gato" -> "🐈"
+                        "conejo" -> "🐰"
+                        "ave" -> "🐦"
+                        else -> "🐾"
                     },
-                    trailingIcon = {
-                        Text("▼")
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    readOnly = true
+                    fontSize = 36.sp
                 )
-                // --------------------------------------------------------
-                // CAPA DE CLIC
-                // --------------------------------------------------------
-                // Esta capa transparente se coloca encima del TextField
-                // para detectar cuando el usuario toca el campo.
-
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable {
-                            speciesExpanded = true
-                        }
-                )
-
-                // --------------------------------------------------------
-                // MENÚ DESPLEGABLE
-                // --------------------------------------------------------
-
-                DropdownMenu(
-                    expanded = speciesExpanded,
-                    onDismissRequest = {
-                        speciesExpanded = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = Color.White,
-                    tonalElevation = 2.dp,
-                    shadowElevation = 6.dp
-                ) {
-
-                    speciesOptions.forEach { option ->
-
-                        DropdownMenuItem(
-                            text = {
-                                Text(option)
-                            },
-                            onClick = {
-                                // Guardamos la especie seleccionada.
-                                species = option
-
-                                speciesExpanded = false
-                            }
-                        )
-                    }
-                }
             }
 
             // ========================================================
-            // RAZA
+            // FORM
             // ========================================================
 
-            PetFieldLabel(
-                text = "Raza",
-                required = false
-            )
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // --------------------------------------------------------
-                // CAMPO VISUAL
-                // --------------------------------------------------------
-                // El campo es solo de lectura porque la especie se
-                // selecciona desde una lista y no se escribe manualmente.
 
-                OutlinedTextField(
-                    value = breed,
-                    onValueChange = { },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            breedExpanded = true
-                        },
-                    placeholder = {
-                        Text("Selecciona la raza")
-                    },
-                    trailingIcon = {
-                        Text("▼")
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    readOnly = true
-                )
-                // --------------------------------------------------------
-                // CAPA DE CLIC
-                // --------------------------------------------------------
-                // Esta capa transparente se coloca encima del TextField
-                // para detectar cuando el usuario toca el campo.
+            PetFormFields(
+                nombre = name,
+                onNombreChange = { name = it },
 
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable {
-                            breedExpanded = true
-                        }
-                )
+                especie = species,
+                onEspecieChange = { species = it },
 
-                // --------------------------------------------------------
-                // MENÚ DESPLEGABLE
-                // --------------------------------------------------------
+                raza = breed,
+                onRazaChange = { breed = it },
 
-                DropdownMenu(
-                    expanded = breedExpanded,
-                    onDismissRequest = {
-                        breedExpanded = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = Color.White,
-                    tonalElevation = 2.dp,
-                    shadowElevation = 6.dp
-                ) {
-
-                    breedOptions.forEach { option ->
-
-                        DropdownMenuItem(
-                            text = {
-                                Text(option)
-                            },
-                            onClick = {
-                                // Guardamos la especie seleccionada.
-                                breed = option
-
-                                breedExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            // ========================================================
-            // EDAD
-            // ========================================================
-
-            PetFieldLabel(
-                text = "Edad",
-                required = true
-            )
-
-            OutlinedTextField(
-
-                value = age,
-                onValueChange = {
-                    age = it
-                },
-                modifier = Modifier.fillMaxWidth(),
-
-                placeholder = {
-                    Text("Ej: 3")
+                fechaNacimiento = fechaNacimiento,
+                onFechaNacimientoChange = {
+                    fechaNacimiento = it
                 },
 
-                keyboardOptions = KeyboardOptions (
-                    keyboardType = KeyboardType.Number
-                ),
+                edad = age,
+                onEdadChange = { age = it },
 
-                shape = RoundedCornerShape(16.dp),
+                tamano = size,
+                onTamanoChange = { size = it },
 
-                singleLine = true
+                sexo = sexo,
+                onSexoChange = { sexo = it },
 
+                peso = peso,
+                onPesoChange = { peso = it }
             )
-
-
-            // ========================================================
-            // TAMAÑO
-            // ========================================================
-
-            PetFieldLabel(
-                text = "Tamaño",
-                required = true
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-
-                SizeButton(
-                    text = "Pequeño",
-                    selected = size == "Pequeño",
-                    onClick = {
-                        size = "Pequeño"
-                    }
-                )
-
-                SizeButton(
-                    text = "Mediano",
-                    selected = size == "Mediano",
-                    onClick = {
-                        size = "Mediano"
-                    }
-                )
-
-                SizeButton(
-                    text = "Grande",
-                    selected = size == "Grande",
-                    onClick = {
-                        size = "Grande"
-                    }
-                )
-            }
-
-            SizeButton(
-                text = "Gigante",
-                selected = size == "Gigante",
-                onClick = {
-                    size = "Gigante"
-                }
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
-
 
             // ========================================================
             // GUARDAR
             // ==============  ==========================================
 
+            val pesoNumerico = peso.replace(",", ".").toDoubleOrNull()
+
             val formularioValido =
                 name.isNotBlank() &&
                         species.isNotBlank() &&
                         age.toIntOrNull() != null &&
-                        size.isNotBlank()
+                        age.toInt() >= 0 &&
+                        size.isNotBlank() &&
+                        (
+                                peso.isBlank() ||
+                                        (pesoNumerico != null &&
+                                                pesoNumerico.isFinite() &&
+                                                pesoNumerico > 0)
+                                )
 
             Button(
                 onClick = {
@@ -528,7 +267,11 @@ fun EditPetScreen(
                         especie = species,
                         raza = breed.ifBlank { null },
                         edad = age.toInt(),
-                        tamano = size
+                        tamano = size,
+                        fechaNacimiento = fechaNacimiento.ifBlank { null },
+                        sexo = sexo.ifBlank { null },
+                        pesoKg = peso.replace(",", ".")
+                            .toDoubleOrNull()
                     )
 
                     petsViewModel.actualizarMascota(mascotaActualizada)
@@ -536,8 +279,9 @@ fun EditPetScreen(
 
                 enabled = formularioValido && !uiState.isLoading,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
+                    .fillMaxWidth(0.72f)
+                    .height(48.dp)
+                    .align(Alignment.CenterHorizontally),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (formularioValido) {

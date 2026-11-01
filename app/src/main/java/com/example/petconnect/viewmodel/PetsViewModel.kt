@@ -150,16 +150,28 @@ fun agregarMascota(pet: Pet) {
             // Enviamos la mascota modificada al Repository.
             val result = petRepository.actualizarMascota(pet)
 
+
             result
                 .onSuccess {
 
-                    // Firestore actualizó correctamente el documento.
+                    // Actualizamos la mascota en la lista local
+                    // después de que Firestore confirmó el cambio.
+                    val mascotasActualizadas = _uiState.value.pets.map { mascota ->
+                        if (mascota.id == pet.id) {
+                            pet
+                        } else {
+                            mascota
+                        }
+                    }
+
                     _uiState.value = _uiState.value.copy(
+                        pets = mascotasActualizadas,
                         isLoading = false,
                         operationSuccess = true,
                         errorMessage = null
                     )
                 }
+
                 .onFailure { error ->
 
                     // Se produjo un error durante la actualización.

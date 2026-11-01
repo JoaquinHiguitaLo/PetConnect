@@ -24,6 +24,29 @@ import com.example.petconnect.viewmodel.PetVaccineViewModel
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.material.icons.filled.Close
+import java.text.Normalizer
+import java.util.Locale
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import com.example.petconnect.ui.components.PetConnectTopBar
+
+private fun normalizarBusquedaVacuna(texto: String): String {
+    return Normalizer.normalize(
+        texto.trim().lowercase(Locale.ROOT),
+        Normalizer.Form.NFD
+    ).replace(Regex("\\p{M}+"), "")
+}
 
 private val VerdeCarnet = Color(0xFF227C78)
 private val FondoCarnet = Color(0xFFFAF9F6)
@@ -39,10 +62,33 @@ fun PetVaccineScreen(
 ) {
     val uiState by vaccineViewModel.uiState.collectAsState()
 
-    // Vacuna que el usuario desea eliminar.
-    var vacunaPorEliminar by remember {
-        mutableStateOf<PetVaccine?>(null)
+
+    var buscadorVisible by remember {
+        mutableStateOf(false)
     }
+
+    var textoBusqueda by remember {
+        mutableStateOf("")
+    }
+
+    val vacunasFiltradas = remember(
+        uiState.vacunas,
+        textoBusqueda
+    ) {
+        val consulta = normalizarBusquedaVacuna(textoBusqueda)
+
+        if (consulta.isBlank()) {
+            uiState.vacunas
+        } else {
+            uiState.vacunas.filter { vacuna ->
+                normalizarBusquedaVacuna(vacuna.nombreVacuna)
+                    .contains(consulta) ||
+                        normalizarBusquedaVacuna(vacuna.veterinaria)
+                            .contains(consulta)
+            }
+        }
+    }
+
 
     // Consultamos únicamente las vacunas de esta mascota.
     LaunchedEffect(mascota.id) {
@@ -52,20 +98,7 @@ fun PetVaccineScreen(
     Scaffold(
         modifier = modifier,
         containerColor = FondoCarnet,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        floatingActionButton = {
-
-        FloatingActionButton(
-                onClick = onAddVaccine,
-                containerColor = VerdeCarnet,
-                contentColor = Color.White
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Agregar vacuna"
-                )
-            }
-        }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
 
         Column(
@@ -74,58 +107,47 @@ fun PetVaccineScreen(
                 .padding(paddingValues)
         ) {
 
-            // ============================================
-            // ENCABEZADO
-            // ============================================
+            // Navegación común de PetConnect
+            PetConnectTopBar(
+                onBack = onBack
+            )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = VerdeCarnet,
-                        shape = RoundedCornerShape(
-                            bottomStart = 24.dp,
-                            bottomEnd = 24.dp
+            // Encabezado propio del carnet
+            VaccineHeader(
+                nombreMascota = mascota.nombre,
+                cantidadVacunas = uiState.vacunas.size,
+                onAddVaccine = onAddVaccine,
+                onSearchClick = {
+                    buscadorVisible = !buscadorVisible
+
+                    if (!buscadorVisible) {
+                        textoBusqueda = ""
+                    }
+                },
+                buscadorVisible = buscadorVisible
+            )
+
+            if (buscadorVisible) {
+                OutlinedTextField(
+                    value = textoBusqueda,
+                    onValueChange = { textoBusqueda = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = 20.dp,
+                            vertical = 8.dp
+                        ),
+                    placeholder = {
+                        Text("Buscar por vacuna o veterinaria...")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null
                         )
-                    )
-                    .padding(
-                        start = 20.dp,
-                        end = 20.dp,
-                        top = 12.dp,
-                        bottom = 24.dp
-                    )
-            ) {
-
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector =
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Regresar",
-                        tint = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "CARNET DE VACUNACIÓN",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = mascota.nombre,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-
-                Text(
-                    text = "Historial de vacunas y próximas dosis",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f)
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp)
                 )
             }
 
@@ -228,17 +250,9 @@ fun PetVaccineScreen(
                             Arrangement.spacedBy(12.dp)
                     ) {
 
-                        item {
-                            Text(
-                                text = "${uiState.vacunas.size} vacunas registradas",
-                                style =
-                                    MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
 
                         items(
-                            items = uiState.vacunas,
+                            vacunasFiltradas,
                             key = { it.id }
                         ) { vacuna ->
 
@@ -247,9 +261,6 @@ fun PetVaccineScreen(
                                 vacuna = vacuna,
                                 onEdit = {
                                     onEditVaccine(vacuna)
-                                },
-                                onDelete = {
-                                    vacunaPorEliminar = vacuna
                                 }
                             )
 
@@ -264,101 +275,15 @@ fun PetVaccineScreen(
         }
     }
 
-    vacunaPorEliminar?.let { vacuna ->
-
-        AlertDialog(
-            onDismissRequest = {
-                if (!uiState.isSaving) {
-                    vacunaPorEliminar = null
-                }
-            },
-
-            title = {
-                Text("Eliminar vacuna")
-            },
-
-
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-
-                    Text(
-                        text = "Estás a punto de eliminar esta vacuna del carnet de ${mascota.nombre}.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surface
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Vaccines,
-                                contentDescription = null,
-                                tint = Color(0xFF227C78)
-                            )
-
-                            Text(
-                                text = vacuna.nombreVacuna,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Esta acción no se puede deshacer.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            },
-
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        vaccineViewModel.eliminarVacuna(vacuna.id)
-                        vacunaPorEliminar = null
-                    },
-                    enabled = !uiState.isSaving
-                ) {
-                    Text(
-                        text = "Eliminar",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            },
-
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        vacunaPorEliminar = null
-                    },
-                    enabled = !uiState.isSaving
-                ) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-
 }
 
 @Composable
 private fun VaccineRecordCard(
     vacuna: PetVaccine,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onEdit: () -> Unit
 ) {
     Card(
+        onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
@@ -367,13 +292,14 @@ private fun VaccineRecordCard(
     ) {
 
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
 
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Vaccines,
@@ -381,76 +307,137 @@ private fun VaccineRecordCard(
                     tint = VerdeCarnet
                 )
 
-                Text(
-                    text = vacuna.nombreVacuna,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            HorizontalDivider()
-
-            Text(
-                text = "Aplicación: ${vacuna.fechaAplicacion}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Text(
-                text = "Próxima dosis: ${vacuna.proximaDosis ?: "No registrada"}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            if (vacuna.veterinaria.isNotBlank()) {
-                Text(
-                    text = "Veterinaria: ${vacuna.veterinaria}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (vacuna.observaciones.isNotBlank()) {
-                Text(
-                    text = vacuna.observaciones,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-
-            HorizontalDivider()
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = vacuna.nombreVacuna,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    Text("Editar")
-                }
-
-                TextButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-
-                    Spacer(modifier = Modifier.width(6.dp))
 
                     Text(
-                        text = "Eliminar",
-                        color = MaterialTheme.colorScheme.error
+                        text = "Aplicada: ${vacuna.fechaAplicacion}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Text(
+                        text = "Próxima: ${vacuna.proximaDosis?.takeIf { it.isNotBlank() } ?: "Sin programar"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF227C78)
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = Color(0xFF88958E)
+                )
+            }
+
+        }
+    }
+}
+
+@Composable
+private fun VaccineHeader(
+    nombreMascota: String,
+    cantidadVacunas: Int,
+    onAddVaccine: () -> Unit,
+    onSearchClick: () -> Unit,
+    buscadorVisible: Boolean
+) {
+    val verde = Color(0xFF227C78)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFAF9F6))
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = 8.dp,
+                bottom = 12.dp
+            )
+    ) {
+
+        Text(
+            text = "Carnet de vacunación",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = verde
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = nombreMascota,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50.dp),
+                color = Color(0xFFB9E7E4)
+            ) {
+                Text(
+                    text = if (cantidadVacunas == 1) {
+                        "1 vacuna"
+                    } else {
+                        "$cantidadVacunas vacunas"
+                    },
+                    modifier = Modifier.padding(
+                        horizontal = 14.dp,
+                        vertical = 9.dp
+                    ),
+                    color = verde,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        imageVector = if (buscadorVisible) {
+                            Icons.Default.Close
+                        } else {
+                            Icons.Default.Search
+                        },
+                        contentDescription = if (buscadorVisible) {
+                            "Cerrar búsqueda"
+                        } else {
+                            "Buscar vacunas"
+                        },
+                        tint = verde
+                    )
+                }
+
+                FilledIconButton(
+                    onClick = onAddVaccine,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = verde,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Agregar vacuna"
                     )
                 }
             }
-
         }
     }
 }

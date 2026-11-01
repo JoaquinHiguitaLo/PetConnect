@@ -1,6 +1,5 @@
-package com.example.petconnect.data.model
 
-//Representa qué es una mascota
+package com.example.petconnect.data.model
 
 data class Pet(
     val id: String = "",
@@ -10,5 +9,10 @@ data class Pet(
     val raza: String? = null,
     val edad: Int = 0,
     val tamano: String = "",
-    val foto: String? = null
+    val foto: String? = null,
+
+    // Información complementaria
+    val fechaNacimiento: String? = null,
+    val sexo: String? = null,
+    val pesoKg: Double? = null
 )
