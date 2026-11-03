@@ -19,11 +19,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.data.model.Business
 import com.example.petconnect.viewmodel.BusinessViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.example.petconnect.ui.components.PetConnectTopBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 
 // Colores alineados con la identidad visual de PetConnect.
-private val VerdePet = Color(0xFF1F6F6B)
-private val VerdeClaroPet = Color(0xFFB7E4DE)
+private val VerdePet = Color(0xFF227C78)
+private val VerdeClaroPet = Color(0xFFB9E7E4)
 private val FondoPet = Color(0xFFFAF9F6)
 private val TextoPet = Color(0xFF243B38)
 
@@ -45,6 +51,21 @@ fun MyBusinessesScreen(
 
     // Estado de los negocios consultados.
     val uiState by businessViewModel.uiState.collectAsState()
+
+    var mostrarBusqueda by remember {
+        mutableStateOf(false)
+    }
+
+    var textoBusqueda by remember {
+        mutableStateOf("")
+    }
+
+    val negociosFiltrados = uiState.businesses.filter { negocio ->
+        negocio.nombre.contains(
+            textoBusqueda.trim(),
+            ignoreCase = true
+        )
+    }
 
     // Controla los mensajes temporales de confirmación.
     val snackbarHostState = remember {
@@ -82,11 +103,22 @@ fun MyBusinessesScreen(
             // ENCABEZADO DEL PRESTADOR
             // ==========================================
 
-            BusinessHeader(
-                titulo = "Mis negocios",
-                subtitulo = "Gestiona tus establecimientos",
+
+            PetConnectTopBar(
                 onBack = onBack
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Mis negocios",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = VerdePet,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
 
 
             // ==========================================
@@ -127,24 +159,14 @@ fun MyBusinessesScreen(
                             .padding(horizontal = 20.dp)
                     ) {
 
-                        Spacer(Modifier.height(26.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
-                                Text(
-                                    text = "Negocios registrados",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = TextoPet,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
                             Surface(
-                                color = Color(0xFFE3F3EF),
+                                color = VerdeClaroPet,
                                 shape = CircleShape
                             ) {
                                 Text(
@@ -158,14 +180,80 @@ fun MyBusinessesScreen(
                                         vertical = 8.dp
                                     ),
                                     color = VerdePet,
-                                    style = MaterialTheme.typography.labelMedium
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
                                 )
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        mostrarBusqueda = !mostrarBusqueda
+                                        if (!mostrarBusqueda) {
+                                            textoBusqueda = ""
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "Buscar negocios",
+                                        tint = VerdePet
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = onAddBusiness,
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            color = VerdePet,
+                                            shape = CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Registrar negocio",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
 
-                        Spacer(Modifier.height(18.dp))
+                        if (mostrarBusqueda) {
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        if (uiState.businesses.isEmpty()) {
+                            OutlinedTextField(
+                                value = textoBusqueda,
+                                onValueChange = { textoBusqueda = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text("Buscar por nombre")
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = VerdePet
+                                    )
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(18.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = VerdePet,
+                                    unfocusedBorderColor = Color(0xFFD9DEDC),
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+
+                        if (negociosFiltrados.isEmpty()) {
                             MensajeNegocios(
                                 titulo = "Aún no tienes negocios",
                                 descripcion = "Los establecimientos registrados a tu nombre aparecerán aquí."
@@ -179,7 +267,7 @@ fun MyBusinessesScreen(
                                 )
                             ) {
                                 items(
-                                    items = uiState.businesses,
+                                    items = negociosFiltrados,
                                     key = { it.id }
                                 ) { business ->
 
@@ -212,26 +300,6 @@ fun MyBusinessesScreen(
                     bottom = 90.dp
                 )
         )
-
-        // ==========================================
-        // BOTÓN PARA REGISTRAR NEGOCIOS
-        // ==========================================
-
-        FloatingActionButton(
-            onClick = onAddBusiness,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp),
-            containerColor = Color(0xFFE0654F),
-            contentColor = Color.White,
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Text(
-                text = "+",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
     }
 }
 

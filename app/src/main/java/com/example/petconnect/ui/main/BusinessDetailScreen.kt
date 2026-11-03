@@ -2,12 +2,12 @@
 package com.example.petconnect.ui.main
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Star
@@ -23,8 +23,11 @@ import androidx.compose.ui.unit.dp
 import com.example.petconnect.R
 import com.example.petconnect.data.model.petConnectCategories
 import com.example.petconnect.viewmodel.BusinessViewModel
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import com.example.petconnect.ui.components.PetConnectTopBar
+import com.example.petconnect.ui.components.PetConnectFormTitle
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,28 +42,31 @@ fun BusinessDetailScreen(
         viewModel.cargarNegocioPorId(businessId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Detalle del negocio") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFFAF9F6))
+            .statusBarsPadding()
+    ) {
+
+        PetConnectTopBar(
+            onBack = onBack
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        PetConnectFormTitle(
+            title = "Detalle del negocio"
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
 
         when {
             uiState.isLoading -> {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                        .fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -71,7 +77,6 @@ fun BusinessDetailScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -86,8 +91,7 @@ fun BusinessDetailScreen(
             uiState.selectedBusiness == null -> {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                        .fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("No se encontró la información del negocio.")
@@ -114,15 +118,21 @@ fun BusinessDetailScreen(
                     else -> R.drawable.vetvida
                 }
 
+
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
+                        .weight(1f)
+                        .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            bottom = 24.dp
+                        ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Imagen destacada del negocio.
+
+                // Imagen destacada del negocio.
                     Image(
                         painter = painterResource(id = imageRes),
                         contentDescription = "Imagen de $categoryName",
@@ -134,42 +144,103 @@ fun BusinessDetailScreen(
                     )
 
                     // Nombre, categoría y calificación.
+
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = business.nombre,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
 
-                        Text(
-                            text = categoryName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
+                        // NOMBRE DEL NEGOCIO Y FAVORITO
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Calificación",
-                                tint = MaterialTheme.colorScheme.tertiary
-                            )
 
                             Text(
-                                text = if (business.calificacion > 0) {
-                                    "%.1f".format(business.calificacion)
-                                } else {
-                                    "Sin calificaciones"
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
+                                text = business.nombre,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF303534)
                             )
+
+                            // Estado visual temporal.
+                            var esFavorito by remember(business.id) {
+                                mutableStateOf(false)
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    esFavorito = !esFavorito
+                                },
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(
+                                        id = if (esFavorito) {
+                                            R.drawable.icon_fav_activ
+                                        } else {
+                                            R.drawable.icon_fav_desac
+                                        }
+                                    ),
+                                    contentDescription = if (esFavorito) {
+                                        "Quitar de favoritos"
+                                    } else {
+                                        "Agregar a favoritos"
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+
+                        // CATEGORÍA Y CALIFICACIÓN
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+
+                            Surface(
+                                shape = RoundedCornerShape(50.dp),
+                                color = Color(0xFFB9E7E4)
+                            ) {
+                                Text(
+                                    text = categoryName,
+                                    modifier = Modifier.padding(
+                                        horizontal = 12.dp,
+                                        vertical = 6.dp
+                                    ),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF227C78)
+                                )
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD58A00),
+                                    modifier = Modifier.size(20.dp)
+                                )
+
+                                Text(
+                                    text = if (business.calificacion > 0) {
+                                        "%.1f".format(business.calificacion)
+                                    } else {
+                                        "Sin calificaciones"
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF303534)
+                                )
+                            }
                         }
                     }
+
 
                     HorizontalDivider()
 
@@ -193,29 +264,39 @@ fun BusinessDetailScreen(
                     }
 
                     // Información de contacto.
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor =
-                                MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color(0xFFE5E9E7)
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 2.dp
                         )
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(18.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(
                                 text = "Información de contacto",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF303534)
                             )
 
                             ContactItem(
                                 icon = {
                                     Icon(
-                                        Icons.Default.LocationOn,
-                                        contentDescription = null
+                                        imageVector = Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = Color(0xFF227C78),
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 },
                                 title = "Dirección",
@@ -224,11 +305,17 @@ fun BusinessDetailScreen(
                                 }
                             )
 
+                            HorizontalDivider(
+                                color = Color(0xFFE5E9E7)
+                            )
+
                             ContactItem(
                                 icon = {
                                     Icon(
-                                        Icons.Default.Phone,
-                                        contentDescription = null
+                                        imageVector = Icons.Default.Phone,
+                                        contentDescription = null,
+                                        tint = Color(0xFF227C78),
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 },
                                 title = "Teléfono",
@@ -238,6 +325,8 @@ fun BusinessDetailScreen(
                             )
                         }
                     }
+
+
                 }
             }
         }
@@ -250,25 +339,41 @@ private fun ContactItem(
     title: String,
     value: String
 ) {
+
     Row(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        icon()
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(
+                    color = Color(0xFFE3F2EF),
+                    shape = RoundedCornerShape(12.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            icon()
+        }
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF303534)
             )
 
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF71817E)
             )
         }
     }
 }
+

@@ -21,9 +21,13 @@ import org.maplibre.android.geometry.LatLng
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.viewmodel.AddressViewModel
 import com.example.petconnect.data.model.UserAddress
+import com.example.petconnect.ui.components.PetConnectTopBar
+import com.example.petconnect.ui.components.PetConnectFormTitle
+import com.example.petconnect.ui.components.PetConnectFormLabel
+import com.example.petconnect.ui.components.PetConnectFormStyle
 
-private val VerdeDireccion = Color(0xFF227A76)
-private val FondoDireccion = Color(0xFFF9F8F4)
+private val VerdeDireccion = Color(0xFF227C78)
+private val FondoDireccion = Color(0xFFFAF9F6)
 
 @Composable
 fun AddAddressScreen(
@@ -85,42 +89,17 @@ fun AddAddressScreen(
     ) {
 
         // ENCABEZADO
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    VerdeDireccion,
-                    RoundedCornerShape(
-                        bottomStart = 24.dp,
-                        bottomEnd = 24.dp
-                    )
-                )
-                .padding(20.dp)
-        ) {
+        PetConnectTopBar(
+            onBack = onBack
+        )
 
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Regresar",
-                    tint = Color.White
-                )
-            }
+        Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(Modifier.height(10.dp))
+        PetConnectFormTitle(
+            title = "Agregar dirección"
+        )
 
-            Text(
-                text = "Agregar dirección",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-
-            Text(
-                text = "Registra una ubicación para buscar servicios cercanos",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.85f)
-            )
-        }
+        Spacer(modifier = Modifier.height(16.dp))
 
         // FORMULARIO
         Column(
@@ -128,7 +107,11 @@ fun AddAddressScreen(
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
+                .imePadding()
+                .padding(
+                    horizontal = 24.dp,
+                    vertical = 8.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
@@ -138,37 +121,42 @@ fun AddAddressScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            OutlinedTextField(
-                value = nombre,
-                onValueChange = { nombre = it },
-                label = { Text("Nombre (Casa, Trabajo, Otra)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+
+            CampoDireccion(
+                titulo = "Nombre de la dirección",
+                valor = nombre,
+                onCambio = { nombre = it },
+                ejemplo = "Ej. Casa, Trabajo, Universidad"
             )
 
-            OutlinedTextField(
-                value = direccion,
-                onValueChange = { direccion = it },
-                label = { Text("Dirección") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+            CampoDireccion(
+                titulo = "Dirección",
+                valor = direccion,
+                onCambio = { direccion = it },
+                ejemplo = "Ej. Cra 31A # 71-46"
             )
 
-            OutlinedTextField(
-                value = ciudad,
-                onValueChange = { ciudad = it },
-                label = { Text("Ciudad") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CampoDireccion(
+                    titulo = "Ciudad",
+                    valor = ciudad,
+                    onCambio = { ciudad = it },
+                    ejemplo = "Ciudad",
+                    modifier = Modifier.weight(1f)
+                )
 
-            OutlinedTextField(
-                value = departamento,
-                onValueChange = { departamento = it },
-                label = { Text("Departamento") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+                CampoDireccion(
+                    titulo = "Departamento",
+                    valor = departamento,
+                    onCambio = { departamento = it },
+                    ejemplo = "Departamento",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
 
             HorizontalDivider()
 
@@ -177,22 +165,39 @@ fun AddAddressScreen(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-
             OutlinedButton(
                 onClick = {
                     mostrarSelectorMapa = true
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(
+                    PetConnectFormStyle.fieldRadius
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    PetConnectFormStyle.border
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White,
+                    contentColor = VerdeDireccion
+                )
             ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = null
                 )
 
-                Spacer(Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                Text("Seleccionar ubicación en el mapa")
+                Text(
+                    text = if (coordenadasDireccion == null) {
+                        "Seleccionar ubicación en el mapa"
+                    } else {
+                        "Cambiar ubicación en el mapa"
+                    }
+                )
             }
             coordenadasDireccion?.let { coordenadas ->
 
@@ -265,18 +270,21 @@ fun AddAddressScreen(
                     direccion.isNotBlank() &&
                     ciudad.isNotBlank() &&
                     departamento.isNotBlank() &&
-                    coordenadasDireccion != null,
+                    coordenadasDireccion != null &&
+                    !addressUiState.isSaving,
+
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    start = 20.dp,
-                    end = 20.dp,
-                    bottom = 20.dp
-                ),
+                .fillMaxWidth(0.72f)
+                .height(48.dp)
+                .align(Alignment.CenterHorizontally),
+
             colors = ButtonDefaults.buttonColors(
-                containerColor = VerdeDireccion
+                containerColor = PetConnectFormStyle.primary
             ),
-            shape = RoundedCornerShape(14.dp)
+
+            shape = RoundedCornerShape(
+                PetConnectFormStyle.buttonRadius
+            )
         ) {
             if (addressUiState.isSaving) {
 
@@ -298,27 +306,66 @@ fun AddAddressScreen(
                 )
             }
 
-            if (mostrarSelectorMapa) {
 
-                SelectAddressLocationScreen(
-                    ubicacionInicial = coordenadasDireccion
-                        ?: LatLng(6.2442, -75.5812),
-
-                    onBack = {
-                        mostrarSelectorMapa = false
-                    },
-
-                    onLocationSelected = { coordenadas ->
-
-                        // Conservamos el punto seleccionado.
-                        coordenadasDireccion = coordenadas
-
-                        // Cerramos el mapa y regresamos al formulario.
-                        mostrarSelectorMapa = false
-                    }
-                )
-            }
 
         }
+    }
+    if (mostrarSelectorMapa) {
+
+        SelectAddressLocationScreen(
+            ubicacionInicial = coordenadasDireccion
+                ?: LatLng(6.2442, -75.5812),
+
+            onBack = {
+                mostrarSelectorMapa = false
+            },
+
+            onLocationSelected = { coordenadas ->
+
+                // Conservamos el punto seleccionado.
+                coordenadasDireccion = coordenadas
+
+                // Cerramos el mapa y regresamos al formulario.
+                mostrarSelectorMapa = false
+            }
+        )
+    }
+}
+
+@Composable
+fun CampoDireccion(
+    titulo: String,
+    valor: String,
+    onCambio: (String) -> Unit,
+    ejemplo: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        PetConnectFormLabel(
+            text = titulo,
+            required = true
+        )
+
+        OutlinedTextField(
+            value = valor,
+            onValueChange = onCambio,
+            placeholder = {
+                Text(ejemplo)
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(
+                PetConnectFormStyle.fieldRadius
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PetConnectFormStyle.primary,
+                unfocusedBorderColor = PetConnectFormStyle.border,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            )
+        )
     }
 }

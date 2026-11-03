@@ -2,4 +2,24 @@
 <resources>
 
     <style name="Theme.PetConnect" parent="android:Theme.Material.Light.NoActionBar" />
+
+
+    <style
+        name="Theme.PetConnect.Starting"
+        parent="Theme.SplashScreen">
+
+        <item name="windowSplashScreenBackground">
+            @color/petconnect_splash_background
+        </item>
+
+        <item name="windowSplashScreenAnimatedIcon">
+            @drawable/splash_icon_empty
+        </item>
+
+        <item name="postSplashScreenTheme">
+            @style/Theme.PetConnect
+        </item>
+
+    </style>
+
 </resources>

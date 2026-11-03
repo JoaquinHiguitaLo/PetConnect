@@ -45,6 +45,10 @@ import androidx.compose.ui.res.painterResource
 import com.example.petconnect.R
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.Surface
+import com.example.petconnect.ui.components.PetConnectTopBar
 @Composable
 fun ServicesByCategoryScreen(
     categoryId: String,
@@ -65,40 +69,52 @@ fun ServicesByCategoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFFFAF9F6))
             .statusBarsPadding()
-            .padding(horizontal = 20.dp)
     ) {
+
+        PetConnectTopBar(
+            onBack = onBack
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onBack
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver"
-                )
-            }
 
-            Column {
-                Text(
-                    text = category?.nombre ?: "Servicios",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+            Text(
+                text = category?.nombre ?: "Servicios",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF227C78),
+                modifier = Modifier.weight(1f)
+            )
 
-                Text(
-                    text = "Negocios disponibles",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            if (!uiState.isLoading && uiState.errorMessage == null) {
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = Color(0xFFB9E7E4)
+                ) {
+                    Text(
+                        text = "${uiState.businesses.size} encontrados",
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 8.dp
+                        ),
+                        color = Color(0xFF227C78),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         when {
             uiState.isLoading -> {
@@ -155,24 +171,24 @@ fun ServicesByCategoryScreen(
                 }
             }
 
-            else -> {
-                Text(
-                    text = "${uiState.businesses.size} negocios encontrados",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
 
-                Spacer(modifier = Modifier.height(12.dp))
+            else -> {
 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(bottom = 28.dp),
+                    contentPadding = PaddingValues(
+                        start = 20.dp,
+                        end = 20.dp,
+                        bottom = 28.dp
+                    ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+
                     items(
                         items = uiState.businesses,
                         key = { it.id }
                     ) { business ->
+
                         BusinessCard(
                             business = business,
                             onClick = {
@@ -182,6 +198,7 @@ fun ServicesByCategoryScreen(
                     }
                 }
             }
+
         }
     }
 }
@@ -222,7 +239,7 @@ private fun BusinessCard(
             "guarderia" -> R.drawable.cat_guarderia
             "paseadores" -> R.drawable.cat_paseadores
             "adiestramiento" -> R.drawable.cat_guarderia
-            "tiendas" -> R.drawable.cat_tiendas
+            "tiendas" -> R.drawable.cat_tienda
             "parques" -> R.drawable.cat_parques
             else -> R.drawable.icon_ubicacion
         }

@@ -34,6 +34,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import com.example.petconnect.R
+import androidx.compose.ui.graphics.Color
+import com.example.petconnect.ui.components.PetConnectTopBar
+import androidx.compose.foundation.background
 
 @Composable
 fun CategoriesScreen(
@@ -44,55 +47,31 @@ fun CategoriesScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFFFAF9F6))
             .statusBarsPadding()
-            .padding(horizontal = 20.dp)
     ) {
 
         // ============================================================
         // ENCABEZADO
         // ============================================================
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
 
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver"
-                )
-            }
-
-            Text(
-                text = "Categorías de servicios",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
+        PetConnectTopBar(
+            onBack = onBack
         )
 
-        // ============================================================
-        // DESCRIPCIÓN
-        // ============================================================
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Encuentra el servicio que necesitas para tu mascota.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "Categorías",
+            color = Color(0xFF227C78),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp)
         )
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
+        Spacer(modifier = Modifier.height(20.dp))
+
 
         // ============================================================
         // LISTA DE CATEGORÍAS
@@ -102,8 +81,8 @@ fun CategoriesScreen(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 2.dp,
-                end = 2.dp,
+                start = 22.dp,
+                end = 22.dp,
                 bottom = 32.dp
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -135,14 +114,16 @@ private fun CategoryCard(
 ) {
     // Relacionamos cada categoría con su imagen en drawable.
     val imageRes = when (category.id) {
-        "veterinaria" -> R.drawable.cat_parques
+        "veterinaria" -> R.drawable.cat_veterinaria
         "peluqueria" -> R.drawable.cat_peluqueria
-        "bano" -> R.drawable.cat_guarderia
+        "bano" -> R.drawable.cat_bano
         "guarderia" -> R.drawable.cat_guarderia
         "paseadores" -> R.drawable.cat_paseadores
-        "adiestramiento" -> R.drawable.cat_hospital
-        "tiendas" -> R.drawable.cat_tiendas
+        "adiestramiento" -> R.drawable.cat_adiestramiento
+        "tiendas" -> R.drawable.cat_tienda
         "parques" -> R.drawable.cat_parques
+        "especialistas" -> R.drawable.cat_especialistas
+        "hoteles_petfriendly" -> R.drawable.cat_hotelpet
 
         // Farmacias todavía no tiene una ilustración propia.
         else -> null
@@ -152,13 +133,13 @@ private fun CategoryCard(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp),
+            .height(155.dp),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 3.dp
+            defaultElevation = 2.dp
         )
     ) {
         Column(

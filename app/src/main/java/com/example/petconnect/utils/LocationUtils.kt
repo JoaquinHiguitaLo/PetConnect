@@ -87,6 +87,7 @@ object LocationUtils {
      * - No utiliza posiciones antiguas como alternativa.
      * - Espera como máximo 12 segundos.
      */
+
     @Suppress("MissingPermission")
     suspend fun obtenerUbicacionActual(
         context: Context
@@ -96,60 +97,73 @@ object LocationUtils {
 
         val manager = context.getSystemService(
             Context.LOCATION_SERVICE
-        ) as LocationManager
+        ) as? LocationManager ?: return null
 
-        val tienePermisoPreciso =
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+        val permisoPreciso = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
 
-        val proveedor = when {
+        // Verificamos si hay algún proveedor disponible.
+        val proveedores = mutableListOf<String>()
 
-            tienePermisoPreciso &&
-                    manager.isProviderEnabled(
-                        LocationManager.GPS_PROVIDER
-                    ) -> LocationManager.GPS_PROVIDER
-
-            manager.isProviderEnabled(
-                LocationManager.NETWORK_PROVIDER
-            ) -> LocationManager.NETWORK_PROVIDER
-
-            else -> return null
+        if (
+            permisoPreciso &&
+            manager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        ) {
+            proveedores.add(LocationManager.GPS_PROVIDER)
         }
 
-        return try {
+        if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            proveedores.add(LocationManager.NETWORK_PROVIDER)
+        }
 
-            withTimeoutOrNull(12_000L) {
+        if (proveedores.isEmpty()) return null
 
-                suspendCancellableCoroutine<Location?> {
-                        continuation ->
+        // Intentamos obtener una ubicación actual.
+        // Si el GPS no responde, probamos la red.
+        for (proveedor in proveedores) {
 
-                    val cancellationSignal =
-                        CancellationSignal()
+            val ubicacion = try {
 
-                    continuation.invokeOnCancellation {
-                        cancellationSignal.cancel()
-                    }
+                withTimeoutOrNull(15_000L) {
 
-                    LocationManagerCompat.getCurrentLocation(
-                        manager,
-                        proveedor,
-                        cancellationSignal,
-                        ContextCompat.getMainExecutor(context)
-                    ) { location ->
+                    suspendCancellableCoroutine<Location?> { continuation ->
 
-                        if (continuation.isActive) {
-                            continuation.resume(location)
+                        val cancelacion = CancellationSignal()
+
+                        continuation.invokeOnCancellation {
+                            cancelacion.cancel()
+                        }
+
+                        LocationManagerCompat.getCurrentLocation(
+                            manager,
+                            proveedor,
+                            cancelacion,
+                            ContextCompat.getMainExecutor(context)
+                        ) { resultado ->
+
+                            if (continuation.isActive) {
+                                continuation.resume(resultado)
+                            }
                         }
                     }
                 }
+
+            } catch (e: SecurityException) {
+                null
+            } catch (e: IllegalArgumentException) {
+                null
             }
 
-        } catch (e: SecurityException) {
-            null
-        } catch (e: IllegalArgumentException) {
-            null
+            if (ubicacion != null) {
+                return ubicacion
+            }
         }
+
+        // Si ningún proveedor obtiene una posición actual,
+        // no inventamos coordenadas.
+        return null
     }
+
 }

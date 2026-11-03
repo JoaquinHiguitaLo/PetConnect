@@ -1,6 +1,6 @@
 package com.example.petconnect.ui.home
 
-import android.R
+import com.example.petconnect.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -43,6 +43,26 @@ import android.location.Location
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import java.util.Locale
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Close
+import com.google.common.math.LinearTransformation.vertical
+import java.text.Normalizer
+import androidx.compose.material3.Surface
+import com.example.petconnect.data.model.petConnectCategories
 
 @Composable
 fun HomeScreen(
@@ -79,21 +99,41 @@ fun HomeScreen(
         .sortedByDescending { business ->
             business.calificacion
         }
+
+    val textoNormalizado = normalizarBusqueda(textoBusqueda)
+
+    val resultadosBusqueda = serviciosDestacados.filter { negocio ->
+
+        val nombre = normalizarBusqueda(negocio.nombre)
+        val categoria = normalizarBusqueda(negocio.categoria)
+        val descripcion = normalizarBusqueda(negocio.descripcion)
+
+        nombre.contains(textoNormalizado) ||
+                categoria.contains(textoNormalizado) ||
+                descripcion.contains(textoNormalizado)
+    }
+
+    val buscando = textoBusqueda.isNotBlank()
+
+    // Especialistas aprobados registrados en PetConnect.
+    val especialistasDestacados = serviciosDestacados
+        .filter { negocio ->
+            negocio.categoria.trim().lowercase() == "especialistas"
+        }
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFFFAF9F6))
     ) {
 
-// ============================================================
-// HEADER
-// ============================================================
+        // ============================================================
+        // HEADER
+        // ============================================================
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    color = MaterialTheme.colorScheme.primary,
+                .background(Color(0xFFFAF9F6),
                     shape = RoundedCornerShape(
                         bottomStart = 24.dp,
                         bottomEnd = 24.dp
@@ -111,73 +151,76 @@ fun HomeScreen(
             // UBICACIÓN + BOTONES SUPERIORES
             // --------------------------------------------------------
 
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                // Información de ubicación
+                // Toda la zona de ubicación abre Direcciones guardadas.
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable {
-                            onAddressesClick()
-                        }
+                        .clickable { onAddressesClick() },
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
 
                     Text(
-                        text = "MI UBICACIÓN ▾",
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium
+                        text = direccionActiva?.direccion
+                            ?: "Selecciona una dirección",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF8A9690),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-
-                    Column {
-
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = if (direccionActiva != null) {
-                                "📍 ${direccionActiva.nombre} · ${direccionActiva.ciudad}"
-                            } else {
-                                "📍 Seleccionar dirección"
-                            },
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            text = direccionActiva?.nombre ?: "Mi ubicación",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF344A43),
+                            maxLines = 1
                         )
 
-                        if (direccionActiva != null) {
+                        Icon(
+                            imageVector = Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = Color(0xFF227C78)
+                        )
 
-                            Spacer(modifier = Modifier.height(3.dp))
-
-                            Text(
-                                text = direccionActiva.direccion,
-                                color = Color.White.copy(alpha = 0.85f),
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1
-                            )
-                        }
+                        Text(
+                            text = "· ${direccionActiva?.ciudad ?: "Sin municipio"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF8A9690),
+                            maxLines = 1
+                        )
                     }
-
                 }
 
-                // Botón de notificaciones
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.15f)
-                    )
+                // Reservado para futuras notificaciones.
+                IconButton(
+                    onClick = {
+                        // Futuras notificaciones.
+                    },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(
+                            color = Color.White,
+                            shape = CircleShape
+                        )
                 ) {
-                    Text(
-                        text = "🔔",
-                        modifier = Modifier.padding(12.dp)
+                    Icon(
+                        imageVector = Icons.Outlined.NotificationsNone,
+                        contentDescription = "Notificaciones",
+                        tint = Color(0xFF227C78),
+                        modifier = Modifier.size(21.dp)
                     )
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -186,27 +229,54 @@ fun HomeScreen(
             // BUSCADOR
             // --------------------------------------------------------
 
+
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { textoBusqueda = it },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
-                    Text("Buscar veterinarias, paseadores...")
+                    Text(
+                        text = "Buscar veterinarias, paseadores...",
+                        maxLines = 1
+                    )
                 },
                 leadingIcon = {
-                    Text("🔍")
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Buscar servicios",
+                        tint = Color(0xFF227C78),
+                        modifier = Modifier.size(21.dp)
+                    )
                 },
+
+                trailingIcon = {
+                    if (textoBusqueda.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                textoBusqueda = ""
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Limpiar búsqueda",
+                                tint = Color(0xFF227C78)
+                            )
+                        }
+                    }
+                },
+
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(50.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
-                    focusedContainerColor = Color.White.copy(alpha = 0.12f),
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.30f),
-                    focusedBorderColor = Color.White.copy(alpha = 0.60f),
-                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.70f),
-                    focusedPlaceholderColor = Color.White.copy(alpha = 0.85f),
-                    unfocusedTextColor = Color.White,
-                    focusedTextColor = Color.White
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = Color(0xFF227C78),
+                    unfocusedBorderColor = Color(0xFFE5E9E7),
+                    focusedTextColor = Color(0xFF303534),
+                    unfocusedTextColor = Color(0xFF303534),
+                    focusedPlaceholderColor = Color(0xFF909995),
+                    unfocusedPlaceholderColor = Color(0xFF909995),
+                    cursorColor = Color(0xFF227C78)
                 )
             )
         }
@@ -214,35 +284,189 @@ fun HomeScreen(
         // ============================================================
         // CONTENIDO PRINCIPAL
         // ============================================================
-
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
         ) {
 
-            Spacer(modifier = Modifier.height(20.dp))
+            if (buscando) {
 
-            Text(
-                text = "Buenos días 👋",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Resultados de búsqueda",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF303534)
+                )
 
-            Text(
-                text = "Hola, ${nombreUsuario.substringBefore(" ").ifBlank { "usuario" }}",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    color = Color(0xFFB9E7E4),
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Text(
+                        text = "${resultadosBusqueda.size} encontrados",
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 6.dp
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF227C78)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when {
+                    homeBusinessUiState.isLoading -> {
+                        CircularProgressIndicator(
+                            color = Color(0xFF227C78)
+                        )
+                    }
+
+                    homeBusinessUiState.errorMessage != null -> {
+                        Text(
+                            text = "No se pudieron cargar los negocios.",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    resultadosBusqueda.isEmpty() -> {
+                        Text(
+                            text = "No encontramos negocios con ese nombre o categoría.",
+                            color = Color(0xFF71817E)
+                        )
+                    }
+
+                    else -> {
+                        resultadosBusqueda.forEach { negocio ->
+                            val categoria = petConnectCategories.find {
+                                it.id == negocio.categoria
+                            }
+
+                            val nombreCategoria = categoria?.nombre ?: negocio.categoria
+
+                            val imagenCategoria = when (negocio.categoria) {
+                                "veterinaria" -> R.drawable.cat_veterinaria
+                                "peluqueria" -> R.drawable.cat_peluqueria
+                                "bano" -> R.drawable.cat_bano
+                                "guarderia" -> R.drawable.cat_guarderia
+                                "paseadores" -> R.drawable.cat_paseadores
+                                "adiestramiento" -> R.drawable.cat_adiestramiento
+                                "parques" -> R.drawable.cat_parques
+                                "tiendas" -> R.drawable.cat_tienda
+                                "especialistas" -> R.drawable.cat_especialistas
+                                "hoteles_petfriendly" -> R.drawable.cat_hotelpet
+                                else -> R.drawable.cat_veterinaria
+                            }
+
+                            Card(
+                                onClick = {
+                                    onBusinessSelected(negocio.id)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = 2.dp
+                                )
+                            ) {
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+
+                                    // IMAGEN DE LA CATEGORÍA
+                                    Box(
+                                        modifier = Modifier
+                                            .size(62.dp)
+                                            .background(
+                                                color = Color(0xFFE3F2EF),
+                                                shape = RoundedCornerShape(14.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = imagenCategoria),
+                                            contentDescription = nombreCategoria,
+                                            modifier = Modifier.size(52.dp),
+                                            contentScale = ContentScale.Fit
+                                        )
+                                    }
+
+                                    // DATOS DEL NEGOCIO
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(7.dp)
+                                    ) {
+
+                                        Text(
+                                            text = negocio.nombre,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF303534),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        Surface(
+                                            shape = RoundedCornerShape(50.dp),
+                                            color = Color(0xFFB9E7E4)
+                                        ) {
+                                            Text(
+                                                text = nombreCategoria,
+                                                modifier = Modifier.padding(
+                                                    horizontal = 10.dp,
+                                                    vertical = 4.dp
+                                                ),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF227C78)
+                                            )
+                                        }
+
+                                        Text(
+                                            text = distanciaDesdeDireccion(
+                                                direccion = direccionActiva,
+                                                negocio = negocio
+                                            ),
+                                            color = Color(0xFF71817E),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(110.dp))
+
+            } else {
+
+                // Aquí permanece el contenido habitual de Inicio:
+                // Categorías, Servicios destacados y Especialistas destacados.
 
 
             // ========================================================
             // CATEGORÍAS
             // ========================================================
-
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(14.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -251,7 +475,8 @@ fun HomeScreen(
                 Text(
                     text = "Categorías",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF303534)
                 )
                 Text(
                     text = "Ver todas",
@@ -259,59 +484,42 @@ fun HomeScreen(
                         onViewAllCategories()
                     },
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+
+            val categoriasInicio = listOf(
+                Triple("veterinaria", "Veterinaria", R.drawable.cat_veterinaria),
+                Triple("peluqueria", "Peluquería", R.drawable.cat_peluqueria),
+                Triple("bano", "Baño", R.drawable.cat_bano),
+                Triple("guarderia", "Guardería", R.drawable.cat_guarderia),
+                Triple("paseadores", "Paseadores", R.drawable.cat_paseadores),
+                Triple("adiestramiento", "Adiestramiento", R.drawable.cat_adiestramiento),
+                Triple("parques", "Parques y jardines", R.drawable.cat_parques),
+                Triple("tiendas", "Tiendas", R.drawable.cat_tienda)
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(end = 8.dp)
             ) {
-                CategoryChip(
-                    icon = "🏥",
-                    text = "Veterinarias",
-                    selected = false,
-                    onClick = {
-                        onCategorySelected("veterinaria")
-                    }
-                )
-
-                CategoryChip(
-                    icon = "✂️",
-                    text = "Peluquerías",
-                    selected = false,
-                    onClick = {
-                        onCategorySelected("peluqueria")
-                    }
-                )
-
-                CategoryChip(
-                    icon = "🐕",
-                    text = "Paseadores",
-                    selected = false,
-                    onClick = {
-                        onCategorySelected("paseadores")
-                    }
-                )
-
-                CategoryChip(
-                    icon = "🏨",
-                    text = "Guarderías",
-                    selected = false,
-                    onClick = {
-                        onCategorySelected("guarderia")
-                    }
-                )
+                items(categoriasInicio) { (id, nombre, imagen) ->
+                    HomeCategoryCard(
+                        nombre = nombre,
+                        imagen = imagen,
+                        onClick = {
+                            onCategorySelected(id)
+                        }
+                    )
+                }
             }
-
-
                 // ========================================================
                 // SERVICIOS DESTACADOS
                 // ========================================================
-
                 Spacer(modifier = Modifier.height(28.dp))
 
                 Row(
@@ -323,26 +531,22 @@ fun HomeScreen(
                     Text(
                         text = "Servicios destacados",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF303534)
                     )
 
-
-                    TextButton(
-                        onClick = onViewAllFeatured
-                    ) {
-                        Text(
-                            text = "Ver todos",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
+                    Text(
+                        text = "Ver todos",
+                        modifier = Modifier.clickable {
+                            onViewAllFeatured()
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
 
                 }
-
                 Spacer(modifier = Modifier.height(12.dp))
-
-
             if (homeBusinessUiState.isLoading) {
 
                 Box(
@@ -372,14 +576,17 @@ fun HomeScreen(
 
             } else {
 
+                Spacer(modifier = Modifier.height(4.dp))
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
-                    serviciosDestacados.forEach { negocio ->
+                serviciosDestacados.forEach { negocio ->
 
                         ServiceCard(
                             emoji = when (
@@ -405,11 +612,8 @@ fun HomeScreen(
                     }
                 }
             }
-
-
-
-            // ========================================================
-                // RECOMENDACIONES
+                // ========================================================
+                // ESPECIALISTAS DESTACADOS
                 // ========================================================
 
                 Spacer(modifier = Modifier.height(28.dp))
@@ -421,43 +625,68 @@ fun HomeScreen(
                 ) {
 
                     Text(
-                        text = "Recomendados para Luna 🐾",
+                        text = "Especialistas destacados",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF303534)
                     )
 
                     Text(
                         text = "Ver más",
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                RecommendationCard(
-                    emoji = "🐕",
-                    name = "Carlos el Paseador",
-                    category = "Paseador",
-                    distance = "0.4 km",
-                    rating = "5.0",
-                    price = "$15.000/paseo"
+
+            if (homeBusinessUiState.isLoading) {
+
+                CircularProgressIndicator(
+                    color = Color(0xFF227C78)
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+            } else if (homeBusinessUiState.errorMessage != null) {
 
-                RecommendationCard(
-                    emoji = "👩‍⚕️",
-                    name = "Dra. Sofía Torres",
-                    category = "Veterinaria",
-                    distance = "0.7 km",
-                    rating = "4.9",
-                    price = "Desde $30.000"
+                Text(
+                    text = "No se pudieron cargar los especialistas.",
+                    color = MaterialTheme.colorScheme.error
                 )
 
+            } else if (especialistasDestacados.isEmpty()) {
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = "Todavía no hay especialistas destacados disponibles.",
+                    color = Color(0xFF71817E),
+                    style = MaterialTheme.typography.bodyMedium
+                )
 
+            } else {
+
+                especialistasDestacados.forEach { especialista ->
+
+                    ServiceCard(
+                        emoji = "👩‍⚕️",
+                        name = especialista.nombre,
+                        category = "Especialistas",
+                        distance = distanciaDesdeDireccion(
+                            direccion = direccionActiva,
+                            negocio = especialista
+                        ),
+                        rating = especialista.calificacion.toString(),
+                        onClick = {
+                            onBusinessSelected(especialista.id)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(120.dp))
+}
             }
         }
     }
@@ -532,23 +761,28 @@ private fun ServiceCard(
     category: String,
     distance: String,
     rating: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier.width(250.dp)
 ) {
-
     Card(
         onClick = onClick,
-        modifier = Modifier.width(250.dp),
-        shape = RoundedCornerShape(18.dp)
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 3.dp,
+            pressedElevation = 1.dp
+        )
     ) {
-
         Column {
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
                     .background(
-                        MaterialTheme.colorScheme.primaryContainer
+                        Color(0xFFE3F2EF)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -825,4 +1059,56 @@ private fun distanciaDesdeDireccion(
             metros / 1000f
         )
     }
+}
+
+@Composable
+private fun HomeCategoryCard(
+    nombre: String,
+    imagen: Int,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(132.dp)
+            .height(142.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Image(
+                painter = painterResource(id = imagen),
+                contentDescription = nombre,
+                modifier = Modifier.size(88.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = nombre,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+private fun normalizarBusqueda(texto: String): String {
+    return Normalizer.normalize(
+        texto.trim().lowercase(Locale.ROOT),
+        Normalizer.Form.NFD
+    ).replace(Regex("\\p{M}+"), "")
 }

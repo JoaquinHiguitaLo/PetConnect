@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -46,6 +45,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.text.style.TextAlign
 import com.example.petconnect.data.model.Category
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import com.example.petconnect.data.model.petConnectCategories
 @Composable
 fun MapScreen(
     modifier: Modifier = Modifier,
@@ -163,7 +165,7 @@ fun MapScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF9F8F4))
+            .background(Color(0xFFFAF9F6))
     ) {
         // ViewModel exclusivo para los negocios del mapa.
         // No interfiere con las consultas de otras pantallas.
@@ -184,7 +186,7 @@ fun MapScreen(
 
         // Categoría activa en el mapa.
         var categoriaSeleccionada by remember {
-            mutableStateOf("Todos")
+            mutableStateOf("todos")
         }
         // Texto que escribe el usuario en el buscador.
         var textoBusqueda by remember {
@@ -203,39 +205,9 @@ fun MapScreen(
             val categoriaNegocio =
                 normalizarCategoria(business.categoria)
 
-            val coincideCategoria = when (categoriaSeleccionada) {
-
-                "Todos" -> true
-
-                "Veterinaria" ->
-                    categoriaNegocio in listOf(
-                        "veterinaria",
-                        "veterinarias"
-                    )
-
-                "Peluquería" ->
-                    categoriaNegocio in listOf(
-                        "peluqueria",
-                        "peluquerias",
-                        "bano",
-                        "bano y peluqueria"
-                    )
-
-                "Paseador" ->
-                    categoriaNegocio in listOf(
-                        "paseador",
-                        "paseadores",
-                        "paseos"
-                    )
-
-                "Guardería" ->
-                    categoriaNegocio in listOf(
-                        "guarderia",
-                        "guarderias"
-                    )
-
-                else -> false
-            }
+            val coincideCategoria =
+                categoriaSeleccionada == "todos" ||
+                        categoriaNegocio == normalizarCategoria(categoriaSeleccionada)
 
             // Normalizamos para ignorar mayúsculas y tildes.
             val busqueda = normalizarCategoria(textoBusqueda)
@@ -289,62 +261,54 @@ fun MapScreen(
                 .fillMaxWidth()
                 .background(Color(0xFFF9F8F4))
                 .padding(
-                    start = 20.dp,
-                    end = 20.dp,
+                    start = 24.dp,
+                    end = 24.dp,
                     top = 16.dp,
                     bottom = 12.dp
                 )
         ) {
 
-            Row(
+
+            OutlinedTextField(
+                value = textoBusqueda,
+                onValueChange = { textoBusqueda = it },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                OutlinedTextField(
-                    value = textoBusqueda,
-                    onValueChange = { nuevoTexto ->
-                        textoBusqueda = nuevoTexto
-                    },
-                    placeholder = {
-                        Text(
-                            text = "Buscar en el mapa...",
-                            color = Color(0xFF8A8A8A)
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Buscar"
-                        )
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.weight(1f),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.White,
-                        focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Color(0xFF227A76)
+                placeholder = {
+                    Text(
+                        text = "Buscar servicios en el mapa...",
+                        color = Color(0xFF8A9995)
                     )
-                )
-
-                IconButton(
-                    onClick = {},
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White)
-                ) {
+                },
+                leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.FilterList,
-                        contentDescription = "Filtros",
-                        tint = Color(0xFF227A76)
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = Color(0xFF227C78),
+                        modifier = Modifier.size(22.dp)
                     )
-                }
-            }
-
+                },
+                trailingIcon = {
+                    if (textoBusqueda.isNotEmpty()) {
+                        IconButton(
+                            onClick = { textoBusqueda = "" }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Limpiar búsqueda",
+                                tint = Color(0xFF227C78)
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF227C78),
+                    unfocusedBorderColor = Color(0xFFD9DEDC),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                )
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -358,47 +322,24 @@ fun MapScreen(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
-
                 MapCategoryChip(
                     text = "Todos",
-                    selected = categoriaSeleccionada == "Todos",
+                    selected = categoriaSeleccionada == "todos",
                     onClick = {
-                        categoriaSeleccionada = "Todos"
+                        categoriaSeleccionada = "todos"
                     }
                 )
 
-                MapCategoryChip(
-                    text = "🏥 Veterinarias",
-                    selected = categoriaSeleccionada == "Veterinaria",
-                    onClick = {
-                        categoriaSeleccionada = "Veterinaria"
-                    }
-                )
+                petConnectCategories.forEach { categoria ->
 
-                MapCategoryChip(
-                    text = "✂️ Peluquerías",
-                    selected = categoriaSeleccionada == "Peluquería",
-                    onClick = {
-                        categoriaSeleccionada = "Peluquería"
-                    }
-                )
-
-                MapCategoryChip(
-                    text = "🐕 Paseadores",
-                    selected = categoriaSeleccionada == "Paseador",
-                    onClick = {
-                        categoriaSeleccionada = "Paseador"
-                    }
-                )
-
-                MapCategoryChip(
-                    text = "🏨 Guarderías",
-                    selected = categoriaSeleccionada == "Guardería",
-                    onClick = {
-                        categoriaSeleccionada = "Guardería"
-                    }
-                )
+                    MapCategoryChip(
+                        text = categoria.nombre,
+                        selected = categoriaSeleccionada == categoria.id,
+                        onClick = {
+                            categoriaSeleccionada = categoria.id
+                        }
+                    )
+                }
 
             }
         }
@@ -488,45 +429,56 @@ fun MapScreen(
         // ============================================================
         // SERVICIOS CERCANOS
         // ============================================================
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(Color(0xFFFAF9F6))
                 .padding(
-                    start = 20.dp,
-                    end = 20.dp,
+                    start = 24.dp,
+                    end = 24.dp,
                     top = 14.dp,
-                    bottom = 12.dp
+                    bottom = 100.dp
                 )
         ) {
-
-            Row(
+        Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text(
                     text = "Servicios cercanos",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF303534)
                 )
 
-                Spacer(modifier = Modifier.width(6.dp))
+                Surface(
+                    color = Color(0xFFB9E7E4),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        text = when {
+                            mapBusinessUiState.isLoading -> "Cargando..."
+                            mapBusinessUiState.errorMessage != null ->
+                                "Error al cargar"
+                            else -> "${negociosFiltrados.size} encontrados"
+                        },
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 6.dp
+                        ),
+                        color = Color(0xFF227C78),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
 
-                Text(
-                    text = if (mapBusinessUiState.isLoading) {
-                        "Cargando..."
-                    } else if (mapBusinessUiState.errorMessage != null) {
-                        "Error al cargar"
-                    } else {
-                        "${negociosFiltrados.size} encontrados"
-                    },
-                    color = Color(0xFF777777),
-                    fontSize = 14.sp
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
 
                 var mostrarMenuOrden by remember {
@@ -541,7 +493,7 @@ fun MapScreen(
                         }
                     ) {
                         Text(
-                            text = "Ordenar▾",
+                            text = "Ordenar ▾",
                             color = Color(0xFF227A76),
                             fontSize = 14.sp
                         )
@@ -736,18 +688,26 @@ private fun MapCategoryChip(
     onClick: () -> Unit
 ){
 
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         color = if (selected) {
-            Color(0xFF227A76)
+            Color(0xFF227C78)
         } else {
             Color.White
         },
-        shadowElevation = if (selected) 0.dp else 2.dp
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) {
+                Color(0xFF227C78)
+            } else {
+                Color(0xFFD9DEDC)
+            }
+        ),
+        shadowElevation = 0.dp
     ) {
-
-        Text(
+    Text(
             text = text,
             color = if (selected) {
                 Color.White
@@ -848,22 +808,25 @@ private fun NearbyServiceCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
-
     Card(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFAF9F5)
+            containerColor = Color.White
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            Color(0xFFE5E9E7)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
         )
     ) {
-
-
-        Column(
+    Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-
             // ==========================================
             // ÍCONO, NOMBRE Y CATEGORÍA
             // ==========================================

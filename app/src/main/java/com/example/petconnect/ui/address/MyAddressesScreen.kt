@@ -18,9 +18,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.data.model.UserAddress
 import com.example.petconnect.viewmodel.AddressViewModel
+import com.example.petconnect.ui.components.PetConnectTopBar
+import com.example.petconnect.ui.components.PetConnectFormTitle
+import com.example.petconnect.ui.components.PetConnectFormStyle
+import androidx.compose.foundation.shape.CircleShape
 
-private val VerdePetConnect = Color(0xFF227A76)
-private val FondoPetConnect = Color(0xFFF9F8F4)
+private val VerdePetConnect = Color(0xFF227C78)
+private val FondoPetConnect = Color(0xFFFAF9F6)
 
 @Composable
 fun MyAddressesScreen(
@@ -50,57 +54,19 @@ fun MyAddressesScreen(
         // ENCABEZADO
         // =========================================
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    VerdePetConnect,
-                    RoundedCornerShape(
-                        bottomStart = 24.dp,
-                        bottomEnd = 24.dp
-                    )
-                )
-                .padding(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 16.dp,
-                    bottom = 24.dp
-                )
-        ) {
+        PetConnectTopBar(
+            onBack = onBack
+        )
 
-            IconButton(
-                onClick = onBack,
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = Color.White.copy(
-                        alpha = 0.12f
-                    )
-                )
-            ) {
-                Icon(
-                    imageVector =
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Regresar",
-                    tint = Color.White
-                )
-            }
+        Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
+        PetConnectFormTitle(
+            title = "Mis direcciones"
+        )
 
-            Text(
-                text = "Mis direcciones",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+        Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = "Administra tus ubicaciones guardadas",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.85f)
-            )
-        }
 
         // =========================================
         // CONTENIDO
@@ -110,9 +76,11 @@ fun MyAddressesScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(
+                    horizontal = 24.dp,
+                    vertical = 8.dp
+                )
         ) {
-
             when {
 
                 uiState.isLoading -> {
@@ -197,13 +165,27 @@ fun MyAddressesScreen(
                             Arrangement.spacedBy(12.dp)
                     ) {
 
-                        Text(
-                            text =
-                                "${uiState.direcciones.size} direcciones guardadas",
-                            style =
-                                MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+
+                        Surface(
+                            color = Color(0xFFB9E7E4),
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                text = if (uiState.direcciones.size == 1) {
+                                    "1 dirección"
+                                } else {
+                                    "${uiState.direcciones.size} direcciones"
+                                },
+                                modifier = Modifier.padding(
+                                    horizontal = 12.dp,
+                                    vertical = 7.dp
+                                ),
+                                color = VerdePetConnect,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
 
 
                         uiState.direcciones.forEach { direccion ->
@@ -236,35 +218,41 @@ fun MyAddressesScreen(
         // =========================================
         // BOTÓN INFERIOR
         // =========================================
-
-        Button(
-            onClick = onAddAddress,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    start = 20.dp,
-                    end = 20.dp,
-                    bottom = 20.dp
-                ),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = VerdePetConnect
-            ),
-            shape = RoundedCornerShape(14.dp),
-            contentPadding = PaddingValues(14.dp)
+                .padding(bottom = 20.dp),
+            contentAlignment = Alignment.Center
         ) {
+            Button(
+                onClick = onAddAddress,
+                modifier = Modifier
+                    .fillMaxWidth(
+                        PetConnectFormStyle.buttonWidthFraction
+                    )
+                    .height(PetConnectFormStyle.buttonHeight),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PetConnectFormStyle.primary
+                ),
+                shape = RoundedCornerShape(
+                    PetConnectFormStyle.buttonRadius
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
 
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null
-            )
+                Spacer(modifier = Modifier.width(8.dp))
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "Agregar dirección",
-                fontWeight = FontWeight.Bold
-            )
+                Text(
+                    text = "Agregar dirección",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
+
     }
 }
 
@@ -275,29 +263,31 @@ private fun AddressCard(
     habilitada: Boolean,
     onClick: () -> Unit
 ) {
-
-
     Card(
         onClick = onClick,
         enabled = habilitada,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+
+        shape = RoundedCornerShape(18.dp),
 
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
 
-        border = if (seleccionada) {
-            androidx.compose.foundation.BorderStroke(
-                2.dp,
-                VerdePetConnect
-            )
-        } else {
-            null
-        }
-    ) {
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        ),
 
-        Row(
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (seleccionada) 2.dp else 1.dp,
+            color = if (seleccionada) {
+                VerdePetConnect
+            } else {
+                Color(0xFFE5E9E7)
+            }
+        )
+    ) {
+    Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement =

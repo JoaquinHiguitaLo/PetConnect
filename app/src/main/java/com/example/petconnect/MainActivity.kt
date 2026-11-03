@@ -1,28 +1,44 @@
+
 package com.example.petconnect
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
 import com.example.petconnect.navigation.AppNavigation
-import com.example.petconnect.ui.home.HomeScreen
-import com.example.petconnect.ui.login.LoginScreen
-import com.example.petconnect.ui.register.RegisterScreen
 import com.example.petconnect.ui.theme.PetConnectTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import com.example.petconnect.ui.main.PetConnectSplashScreen
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+
         setContent {
             PetConnectTheme {
-                AppNavigation()
+
+                var mostrarSplash by remember {
+                    mutableStateOf(true)
+                }
+
+                LaunchedEffect(Unit) {
+                    delay(800L)
+                    mostrarSplash = false
+                }
+
+                if (mostrarSplash) {
+                    PetConnectSplashScreen()
+                } else {
+                    AppNavigation()
+                }
             }
         }
     }

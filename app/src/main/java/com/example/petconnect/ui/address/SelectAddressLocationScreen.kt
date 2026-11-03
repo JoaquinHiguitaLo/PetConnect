@@ -25,8 +25,13 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
+import com.example.petconnect.ui.components.PetConnectTopBar
+import com.example.petconnect.ui.components.PetConnectFormTitle
+import com.example.petconnect.ui.components.PetConnectFormStyle
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.font.FontWeight
 
-private val VerdeSelector = Color(0xFF227A76)
+private val VerdeSelector = Color(0xFF227C78)
 
 @Composable
 fun SelectAddressLocationScreen(
@@ -141,40 +146,21 @@ fun SelectAddressLocationScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF9F8F4))
+                .background(Color(0xFFFAF9F6))
         ) {
 
             // ENCABEZADO
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(VerdeSelector)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            PetConnectTopBar(
+                onBack = onBack
+            )
 
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cerrar selector",
-                        tint = Color.White
-                    )
-                }
+            Spacer(modifier = Modifier.height(8.dp))
 
-                Column {
-                    Text(
-                        text = "Seleccionar ubicación",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge
-                    )
+            PetConnectFormTitle(
+                title = "Seleccionar ubicación"
+            )
 
-                    Text(
-                        text = "Mueve el mapa para elegir un punto",
-                        color = Color.White.copy(alpha = 0.85f),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             // MAPA Y MARCADOR FIJO
             Box(
@@ -200,46 +186,125 @@ fun SelectAddressLocationScreen(
             }
 
             // INFORMACIÓN Y CONFIRMACIÓN
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(
+                        horizontal = 24.dp,
+                        vertical = 16.dp
+                    ),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
 
-                Text(
-                    text = "Coordenadas seleccionadas",
-                    style = MaterialTheme.typography.titleSmall
-                )
-
-                Text(
-                    text = "Latitud: %.6f".format(
-                        coordenadasSeleccionadas.latitude
-                    )
-                )
-
-                Text(
-                    text = "Longitud: %.6f".format(
-                        coordenadasSeleccionadas.longitude
-                    )
-                )
-
-                Button(
-                    onClick = {
-                        onLocationSelected(
-                            coordenadasSeleccionadas
-                        )
-                    },
-                    enabled = mapaListo,
+                // TARJETA DE COORDENADAS
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = VerdeSelector
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color.White,
+                    border = BorderStroke(
+                        1.dp,
+                        Color(0xFFE5E9E7)
                     )
                 ) {
-                    Text("Confirmar ubicación")
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = VerdeSelector,
+                                modifier = Modifier.size(20.dp)
+                            )
+
+                            Text(
+                                text = "Coordenadas seleccionadas",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        HorizontalDivider(
+                            color = Color(0xFFE8E8E3)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text(
+                                    text = "Latitud",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFF71817E)
+                                )
+
+                                Text(
+                                    text = "%.6f".format(
+                                        coordenadasSeleccionadas.latitude
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text(
+                                    text = "Longitud",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFF71817E)
+                                )
+
+                                Text(
+                                    text = "%.6f".format(
+                                        coordenadasSeleccionadas.longitude
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // BOTÓN DE CONFIRMACIÓN
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = {
+                            onLocationSelected(coordenadasSeleccionadas)
+                        },
+                        enabled = mapaListo,
+                        modifier = Modifier
+                            .fillMaxWidth(0.72f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PetConnectFormStyle.primary
+                        )
+                    ) {
+                        Text(
+                            text = "Confirmar ubicación",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
+
         }
     }
 }
+
+

@@ -14,345 +14,476 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SmartToy
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.text.style.TextOverflow
+
+import com.example.petconnect.viewmodel.PetsViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun AIScreen(
     modifier: Modifier = Modifier
 ) {
 
-    val teal = Color(0xFF217A76)
-    val cream = Color(0xFFFAF9F5)
-    val orange = Color(0xFFE59A18)
-    val lightGreen = Color(0xFFE8F4EE)
+    val teal = Color(0xFF227C78)
+    val cream = Color(0xFFFAF9F6)
+    val lightGreen = Color(0xFFE3F2EF)
+
+
+    // ViewModel exclusivo de mascotas para el asistente.
+    val petsViewModel: PetsViewModel = viewModel(
+        key = "ai_pets"
+    )
+    val petsUiState by petsViewModel.uiState.collectAsState()
+    // Usuario autenticado en Firebase.
+    val usuarioId = FirebaseAuth.getInstance().currentUser?.uid
+    // Mascota seleccionada.
+    var mascotaSeleccionadaId by remember {
+        mutableStateOf<String?>(null)
+    }
+    // Servicio seleccionado.
+    var necesidadSeleccionada by remember {
+        mutableStateOf("veterinaria")
+    }
+    // Consultamos las mascotas al entrar al asistente.
+    LaunchedEffect(usuarioId) {
+        if (usuarioId != null) {
+            petsViewModel.cargarMascotas(usuarioId)
+        }
+    }
+    // Mascotas reales obtenidas de Firestore.
+    val mascotas = petsUiState.pets
+    // Seleccionamos automáticamente la primera mascota
+    // cuando termina la carga.
+    LaunchedEffect(mascotas) {
+        if (mascotas.isNotEmpty()) {
+            val seleccionExiste = mascotas.any {
+                it.id == mascotaSeleccionadaId
+            }
+
+            if (!seleccionExiste) {
+                mascotaSeleccionadaId = mascotas.first().id
+            }
+        } else {
+            mascotaSeleccionadaId = null
+        }
+    }
+
+    // Obtenemos la mascota seleccionada.
+    val mascotaSeleccionada = mascotas.find {
+        it.id == mascotaSeleccionadaId
+    }
+
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(cream)
+            .verticalScroll(rememberScrollState())
     ) {
-
-        // ============================================================
-        // ENCABEZADO
-        // ============================================================
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    color = teal,
-                    shape = RoundedCornerShape(
-                        bottomStart = 28.dp,
-                        bottomEnd = 28.dp
-                    )
-                )
                 .padding(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 28.dp,
-                    bottom = 20.dp
-                )
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = 24.dp,
+                    bottom = 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
 
-            Text(
-                text = "ASISTENTE INTELIGENTE",
-                color = Color(0xFF9ED8D4),
-                fontSize = 14.sp
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Recomendaciones IA ✨",
-                color = Color.White,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // ========================================================
-            // SELECCIONA TU MASCOTA
-            // ========================================================
-
-            Text(
-                text = "SELECCIONA TU MASCOTA",
-                color = Color(0xFF9ED8D4),
-                fontSize = 14.sp
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
+            // TÍTULO DEL ASISTENTE
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-
-                PetChip(
-                    emoji = "🐕",
-                    text = "Luna",
-                    selected = true
-                )
-
-                PetChip(
-                    emoji = "🐈",
-                    text = "Michi",
-                    selected = false
-                )
-
-                PetChip(
-                    emoji = "🐶",
-                    text = "Coco",
-                    selected = false
-                )
-            }
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            // ========================================================
-            // NECESIDAD
-            // ========================================================
-
-            Text(
-                text = "¿QUÉ NECESITA?",
-                color = Color(0xFF9ED8D4),
-                fontSize = 14.sp
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-
-                NeedChip(
-                    emoji = "🏥",
-                    text = "Veterinaria",
-                    selected = true
-                )
-
-                NeedChip(
-                    emoji = "✂️",
-                    text = "Peluquería",
-                    selected = false
-                )
-
-                NeedChip(
-                    emoji = "🍖",
-                    text = "Alimentación",
-                    selected = false
-                )
-            }
-        }
-
-        // ============================================================
-        // CONTENIDO
-        // ============================================================
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    horizontal = 20.dp,
-                    vertical = 18.dp
-                )
-        ) {
-
-            // ========================================================
-            // ANÁLISIS IA
-            // ========================================================
-
-            Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFF7F4EA)
-                )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.Top
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .background(
+                            color = lightGreen,
+                            shape = RoundedCornerShape(14.dp)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SmartToy,
+                        contentDescription = null,
+                        tint = teal,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Asistente de recomendaciones IA",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = teal
+                    )
 
                     Text(
-                        text = "🤖",
-                        fontSize = 28.sp
+                        text = "Encuentra servicios para tu mascota",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF71817E)
                     )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column {
-
-                        Text(
-                            text = "Análisis para 🐕 Luna",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "Basado en su raza, edad y necesidades, "
-                                    + "encontré 3 opciones ideales cerca de ti "
-                                    + "ordenadas por compatibilidad.",
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                            color = Color.DarkGray
-                        )
-                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            // SELECCIÓN DE MASCOTA
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Selecciona tu mascota",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF303534)
+                )
+                when {
+                    usuarioId == null -> {
+                        Text(
+                            text = "Inicia sesión para consultar tus mascotas.",
+                            color = Color(0xFF71817E),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
 
-            // ========================================================
-            // RECOMENDACIÓN 1
-            // ========================================================
+                    petsUiState.isLoading -> {
+                        CircularProgressIndicator(
+                            color = teal,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
 
-            RecommendationCard(
-                emoji = "🏥",
-                name = "Clínica VetVida",
-                description = "Especialistas en Golden Retriever, vacunas al día",
-                category = "Veterinaria",
-                distance = "0.8 km",
-                rating = "4.9",
-                price = "$25.000",
-                match = "98%",
-                matchColor = Color(0xFF398B5E)
-            )
+                    petsUiState.errorMessage != null -> {
+                        Text(
+                            text = "No se pudieron cargar tus mascotas.",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
 
-            Spacer(modifier = Modifier.height(14.dp))
+                    mascotas.isEmpty() -> {
+                        Text(
+                            text = "Todavía no tienes mascotas registradas.",
+                            color = Color(0xFF71817E),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
 
-            // ========================================================
-            // RECOMENDACIÓN 2
-            // ========================================================
+                    else -> {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(end = 8.dp)
+                        ) {
+                            items(
+                                items = mascotas,
+                                key = { it.id }
+                            ) { mascota ->
 
-            RecommendationCard(
-                emoji = "👩‍⚕️",
-                name = "Dra. Sofía Torres",
-                description = "Alta calificación, atención personalizada",
-                category = "Veterinaria",
-                distance = "1.1 km",
-                rating = "4.9",
-                price = "$40.000",
-                match = "95%",
-                matchColor = Color(0xFF398B5E)
-            )
+                                val emoji = when (
+                                    mascota.especie.trim().lowercase()
+                                ) {
+                                    "perro", "canino" -> "🐶"
+                                    "gato", "felino" -> "🐱"
+                                    else -> "🐾"
+                                }
 
-            Spacer(modifier = Modifier.height(14.dp))
+                                PetChip(
+                                    emoji = emoji,
+                                    text = mascota.nombre,
+                                    selected = mascotaSeleccionadaId == mascota.id,
+                                    onClick = {
+                                        mascotaSeleccionadaId = mascota.id
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
-            // ========================================================
-            // RECOMENDACIÓN 3
-            // ========================================================
+            }
 
-            RecommendationCard(
-                emoji = "🏥",
-                name = "VetPlus 24h",
-                description = "Urgencias 24h, laboratorio en sitio",
-                category = "Veterinaria",
-                distance = "2.3 km",
-                rating = "4.8",
-                price = "$35.000",
-                match = "87%",
-                matchColor = Color.Gray
-            )
+            // SELECCIÓN DEL SERVICIO
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "¿Qué necesita tu mascota?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF303534)
+                )
 
-            Spacer(modifier = Modifier.height(20.dp))
+
+                val necesidades = listOf(
+                    Triple("veterinaria", "Veterinaria", "🏥"),
+                    Triple("peluqueria", "Peluquería", "✂️"),
+                    Triple("bano", "Baño", "🛁"),
+                    Triple("guarderia", "Guardería", "🏠"),
+                    Triple("paseadores", "Paseadores", "🐕"),
+                    Triple("especialistas", "Especialistas", "🩺")
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(end = 8.dp)
+                ) {
+                    items(necesidades) { (id, nombre, emoji) ->
+
+                        NeedChip(
+                            emoji = emoji,
+                            text = nombre,
+                            selected = necesidadSeleccionada == id,
+                            onClick = {
+                                necesidadSeleccionada = id
+                            }
+                        )
+                    }
+                }
+
+            }
+
+            // ============================================================
+            // CONTENIDO
+            // ============================================================
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 20.dp,
+                        vertical = 18.dp
+                    )
+            ) {
+                // ========================================================
+                // ANÁLISIS IA
+                // ========================================================
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFF7F4EA)
+                    )
+                ) {
+
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+
+                        Text(
+                            text = "🤖",
+                            fontSize = 28.sp
+                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column {
+
+                            Text(
+                                text = if (mascotaSeleccionada != null) {
+                                    "Recomendaciones para ${mascotaSeleccionada.nombre}"
+                                } else {
+                                    "Recomendaciones para tu mascota"
+                                },
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Explora algunos servicios de ejemplo para tu mascota. " +
+                                        "Las recomendaciones personalizadas con IA estarán " +
+                                        "disponibles en una próxima versión.",
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp,
+                                color = Color.DarkGray
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // ========================================================
+                // RECOMENDACIÓN 1
+                // ========================================================
+
+                RecommendationCard(
+                    emoji = "🏥",
+                    name = "Clínica VetVida",
+                    description = "Especialistas en Golden Retriever, vacunas al día",
+                    category = "Veterinaria",
+                    distance = "0.8 km",
+                    rating = "4.9",
+                    price = "$25.000",
+                    match = "98%",
+                    matchColor = Color(0xFF398B5E)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // ========================================================
+                // RECOMENDACIÓN 2
+                // ========================================================
+
+                RecommendationCard(
+                    emoji = "👩‍⚕️",
+                    name = "Dra. Sofía Torres",
+                    description = "Alta calificación, atención personalizada",
+                    category = "Veterinaria",
+                    distance = "1.1 km",
+                    rating = "4.9",
+                    price = "$40.000",
+                    match = "95%",
+                    matchColor = Color(0xFF398B5E)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // ========================================================
+                // RECOMENDACIÓN 3
+                // ========================================================
+
+                RecommendationCard(
+                    emoji = "🏥",
+                    name = "VetPlus 24h",
+                    description = "Urgencias 24h, laboratorio en sitio",
+                    category = "Veterinaria",
+                    distance = "2.3 km",
+                    rating = "4.8",
+                    price = "$35.000",
+                    match = "87%",
+                    matchColor = Color.Gray
+                )
+
+                Spacer(modifier = Modifier.height(110.dp))
+            }
         }
     }
+
 }
 
 @Composable
 private fun PetChip(
     emoji: String,
     text: String,
-    selected: Boolean
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
-
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        onClick = onClick,
+        shape = CircleShape,
         color = if (selected) {
-            Color.White
+            Color(0xFF227C78)
         } else {
-            Color(0xFF398985)
-        }
+            Color.White
+        },
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) {
+                Color(0xFF227C78)
+            } else {
+                Color(0xFFD9DEDC)
+            }
+        )
     ) {
-
         Row(
             modifier = Modifier.padding(
                 horizontal = 16.dp,
                 vertical = 11.dp
             ),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-
             Text(
                 text = emoji,
                 fontSize = 18.sp
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
-
             Text(
                 text = text,
-                color = if (selected) {
-                    Color(0xFF217A76)
-                } else {
-                    Color.White
-                },
-                fontSize = 15.sp,
+                color = if (selected) Color.White
+                else Color(0xFF303534),
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
+
+
 
 @Composable
 private fun NeedChip(
     emoji: String,
     text: String,
-    selected: Boolean
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
-
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        onClick = onClick,
+        shape = CircleShape,
         color = if (selected) {
-            Color(0xFFE59A18)
+            Color(0xFF227C78)
         } else {
-            Color(0xFF398985)
-        }
+            Color.White
+        },
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) {
+                Color(0xFF227C78)
+            } else {
+                Color(0xFFD9DEDC)
+            }
+        )
     ) {
-
         Row(
             modifier = Modifier.padding(
                 horizontal = 16.dp,
                 vertical = 11.dp
             ),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-
             Text(
                 text = emoji,
                 fontSize = 17.sp
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
-
             Text(
                 text = text,
-                color = Color.White,
-                fontSize = 15.sp,
+                color = if (selected) Color.White
+                else Color(0xFF303534),
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
+
 
 @Composable
 private fun RecommendationCard(
@@ -366,156 +497,122 @@ private fun RecommendationCard(
     match: String,
     matchColor: Color
 ) {
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        ),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            Color(0xFFE5E9E7)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
         )
     ) {
-
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // ========================================================
-            // ICONO
-            // ========================================================
-
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(
-                        color = Color(0xFFF5F6F1),
-                        shape = RoundedCornerShape(16.dp)
-                    ),
-                contentAlignment = Alignment.Center
+            // NOMBRE, DESCRIPCIÓN E ICONO
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top
             ) {
 
-                Text(
-                    text = emoji,
-                    fontSize = 30.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            // ========================================================
-            // INFORMACIÓN
-            // ========================================================
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
-                Text(
-                    text = name,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = description,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = Color.Gray
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(
+                            Color(0xFFE3F2EF),
+                            RoundedCornerShape(14.dp)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFFFE0A8)
-                    ) {
-
-                        Text(
-                            text = category,
-                            modifier = Modifier.padding(
-                                horizontal = 10.dp,
-                                vertical = 4.dp
-                            ),
-                            fontSize = 11.sp,
-                            color = Color(0xFFB56B00),
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
                     Text(
-                        text = "📍 $distance",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = "⭐ $rating",
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = emoji,
+                        fontSize = 25.sp
                     )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = price,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF217A76)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // ========================================================
-            // MATCH
-            // ========================================================
-
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = Color(0xFFF0F5F0),
-                        shape = RoundedCornerShape(14.dp)
-                    )
-                    .padding(
-                        horizontal = 10.dp,
-                        vertical = 8.dp
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
 
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
 
                     Text(
-                        text = match,
-                        color = matchColor,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        text = name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF303534)
                     )
 
                     Text(
-                        text = "match",
-                        color = matchColor,
-                        fontSize = 10.sp
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF71817E)
                     )
                 }
             }
+
+            HorizontalDivider(
+                color = Color(0xFFE5E9E7)
+            )
+
+            // CATEGORÍA
+            Row {
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = Color(0xFFB9E7E4)
+                ) {
+                    Text(
+                        text = category,
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 6.dp
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF227C78),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            // DISTANCIA Y CALIFICACIÓN
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text(
+                    text = "📍 $distance",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF71817E)
+                )
+
+                Text(
+                    text = "⭐ $rating",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF303534)
+                )
+            }
+
+            // PRECIO DEMOSTRATIVO
+            Text(
+                text = price,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF227C78)
+            )
         }
     }
 }
+
+
 

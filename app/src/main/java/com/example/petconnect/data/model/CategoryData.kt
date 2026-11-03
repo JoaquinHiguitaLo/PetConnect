@@ -46,5 +46,16 @@ val petConnectCategories = listOf(
         id = "tiendas",
         nombre = "Tiendas",
         icono = "🛍️"
+    ),
+    Category(
+        id = "especialistas",
+        nombre = "Especialistas",
+        icono = "🩺"
+    ),
+
+    Category(
+        id = "hoteles_petfriendly",
+        nombre = "Hoteles Pet Friendly",
+        icono = "🏨"
     )
 )

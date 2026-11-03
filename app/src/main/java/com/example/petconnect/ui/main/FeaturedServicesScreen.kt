@@ -24,10 +24,15 @@ import com.example.petconnect.viewmodel.BusinessViewModel
 import android.location.Location
 import java.util.Locale
 import java.text.Normalizer
+import com.example.petconnect.ui.components.PetConnectTopBar
+import com.example.petconnect.ui.components.PetConnectFormTitle
 
-private val VerdeDestacados = Color(0xFF227A76)
-private val FondoDestacados = Color(0xFFF9F8F4)
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.shape.CircleShape
 
+private val VerdeDestacados = Color(0xFF227C78)
+private val FondoDestacados = Color(0xFFFAF9F6)
 @Composable
 fun FeaturedServicesScreen(
     direccionActiva: UserAddress?,
@@ -148,71 +153,71 @@ fun FeaturedServicesScreen(
             .background(FondoDestacados)
     ) {
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    VerdeDestacados,
-                    RoundedCornerShape(
-                        bottomStart = 22.dp,
-                        bottomEnd = 22.dp
-                    )
-                )
-                .padding(18.dp)
-        ) {
 
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector =
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Regresar",
-                    tint = Color.White
-                )
-            }
+        PetConnectTopBar(
+            onBack = onBack
+        )
 
-            Text(
-                text = "Servicios destacados",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+        Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "Establecimientos para el cuidado de tus mascotas",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.85f)
-            )
-        }
+        PetConnectFormTitle(
+            title = "Servicios destacados"
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
 
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(
+                    horizontal = 24.dp,
+                    vertical = 8.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+
 
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { textoBusqueda = it },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
-                    Text("Buscar establecimientos...")
+                    Text(
+                        text = "Buscar establecimientos...",
+                        color = Color(0xFF8A9995)
+                    )
                 },
                 leadingIcon = {
-                    Text("🔎")
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = VerdeDestacados,
+                        modifier = Modifier.size(22.dp)
+                    )
                 },
                 trailingIcon = {
                     if (textoBusqueda.isNotEmpty()) {
-                        TextButton(
+                        IconButton(
                             onClick = { textoBusqueda = "" }
                         ) {
-                            Text("✕")
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Limpiar búsqueda",
+                                tint = VerdeDestacados
+                            )
                         }
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = VerdeDestacados,
+                    unfocusedBorderColor = Color(0xFFD9DEDC),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                )
             )
 
 
@@ -238,8 +243,22 @@ fun FeaturedServicesScreen(
                         },
                         label = {
                             Text(categoria)
-                        }
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color.White,
+                            labelColor = Color(0xFF303534),
+                            selectedContainerColor = VerdeDestacados,
+                            selectedLabelColor = Color.White
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = categoriaSeleccionada == categoria,
+                            borderColor = Color(0xFFD9DEDC),
+                            selectedBorderColor = VerdeDestacados
+                        )
                     )
+
                 }
             }
 
@@ -249,11 +268,27 @@ fun FeaturedServicesScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
 
-                Text(
-                    text = "${negocios.size} servicios",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
+
+                Surface(
+                    color = Color(0xFFB9E7E4),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        text = if (negocios.size == 1) {
+                            "1 servicio"
+                        } else {
+                            "${negocios.size} servicios"
+                        },
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 7.dp
+                        ),
+                        color = VerdeDestacados,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
 
                 var menuAbierto by remember {
                     mutableStateOf(false)
@@ -347,7 +382,12 @@ fun FeaturedServicesScreen(
                     columns = GridCells.Fixed(2),
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(14.dp),
+                        .padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            top = 12.dp,
+                            bottom = 24.dp
+                        ),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {

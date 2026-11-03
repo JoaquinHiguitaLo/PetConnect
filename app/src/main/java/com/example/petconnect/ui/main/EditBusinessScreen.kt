@@ -17,8 +17,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.petconnect.data.model.Business
 import com.example.petconnect.viewmodel.BusinessViewModel
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 
-private val VerdeEdicion = Color(0xFF1F6F6B)
+import com.example.petconnect.data.model.petConnectCategories
+import com.example.petconnect.ui.components.PetConnectTopBar
+import com.example.petconnect.ui.components.PetConnectFormTitle
+import com.example.petconnect.ui.components.PetConnectFormStyle
+import com.example.petconnect.ui.components.PetConnectFormLabel
+
+private val VerdeEdicion = Color(0xFF227C78)
 private val FondoEdicion = Color(0xFFFAF9F6)
 
 @Composable
@@ -67,20 +76,15 @@ fun EditBusinessScreen(
 
     val uiState by businessViewModel.uiState.collectAsState()
 
-    val categorias = listOf(
-        "veterinaria" to "Veterinaria",
-        "peluqueria" to "Peluquería",
-        "bano" to "Baño",
-        "guarderia" to "Guardería",
-        "paseadores" to "Paseadores",
-        "adiestramiento" to "Adiestramiento",
-        "tiendas" to "Tienda",
-        "parques" to "Parques"
-    )
+    val categorias = petConnectCategories.map {
+        it.id to it.nombre
+    }
 
     val categoriaNombre = categorias
         .firstOrNull { it.first == categoria }
         ?.second ?: categoria
+    var anchoCategoriaPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
 
     // Limpiamos cualquier resultado anterior al abrir.
     LaunchedEffect(business.id) {
@@ -104,52 +108,74 @@ fun EditBusinessScreen(
             .fillMaxSize()
             .background(FondoEdicion)
     ) {
-        BusinessHeader(
-            titulo = "Editar establecimiento",
-            subtitulo = "Actualiza la información de tu negocio",
-            onBack = onBack,
-            backEnabled = !uiState.isLoading
+
+        PetConnectTopBar(
+            onBack = {
+                if (!uiState.isLoading) {
+                    onBack()
+                }
+            }
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        PetConnectFormTitle(
+            title = "Editar negocio"
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(20.dp),
+                .padding(
+                    horizontal = 24.dp,
+                    vertical = 8.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Información del establecimiento",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
 
-            Text(
-                text = "Modifica los datos que necesites.",
-                color = Color.Gray
-            )
 
-            OutlinedTextField(
-                value = nombre,
-                onValueChange = { nombre = it },
-                label = { Text("Nombre del negocio") },
-                singleLine = true,
-                enabled = !uiState.isLoading,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp)
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                PetConnectFormLabel(
+                    text = "Nombre del negocio",
+                    required = true
+                )
 
-            Text(
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    singleLine = true,
+                    enabled = !uiState.isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(PetConnectFormStyle.fieldRadius),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PetConnectFormStyle.primary,
+                        unfocusedBorderColor = PetConnectFormStyle.border,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+            }
+
+
+            PetConnectFormLabel(
                 text = "Categoría del servicio",
-                fontWeight = FontWeight.SemiBold
+                required = true
             )
 
             Box {
                 OutlinedButton(
                     onClick = { mostrarCategorias = true },
                     enabled = !uiState.isLoading,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged { anchoCategoriaPx = it.width }
                 ) {
                     Text(categoriaNombre, color = VerdeEdicion)
                     Spacer(Modifier.weight(1f))
@@ -158,9 +184,15 @@ fun EditBusinessScreen(
 
                 DropdownMenu(
                     expanded = mostrarCategorias,
+                    modifier = Modifier.width(
+                        with(density) { anchoCategoriaPx.toDp() }
+                    ),
+                    containerColor = Color.White,
+                    shape = RoundedCornerShape(14.dp),
                     onDismissRequest = {
                         mostrarCategorias = false
                     }
+
                 ) {
                     categorias.forEach { (id, titulo) ->
                         DropdownMenuItem(
@@ -174,16 +206,32 @@ fun EditBusinessScreen(
                 }
             }
 
-            OutlinedTextField(
-                value = descripcion,
-                onValueChange = { descripcion = it },
-                label = { Text("Descripción") },
-                minLines = 3,
-                maxLines = 5,
-                enabled = !uiState.isLoading,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp)
-            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                PetConnectFormLabel(
+                    text = "Descripción",
+                    required = true
+                )
+
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    minLines = 3,
+                    maxLines = 5,
+                    enabled = !uiState.isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(PetConnectFormStyle.fieldRadius),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PetConnectFormStyle.primary,
+                        unfocusedBorderColor = PetConnectFormStyle.border,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+            }
+
 
             HorizontalDivider()
 
@@ -193,28 +241,48 @@ fun EditBusinessScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            OutlinedTextField(
-                value = direccion,
-                onValueChange = { direccion = it },
-                label = { Text("Dirección") },
-                singleLine = true,
-                enabled = !uiState.isLoading,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp)
-            )
 
-            OutlinedTextField(
-                value = telefono,
-                onValueChange = { telefono = it },
-                label = { Text("Teléfono de contacto") },
-                singleLine = true,
-                enabled = !uiState.isLoading,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Phone
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp)
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                PetConnectFormLabel("Dirección", required = true)
+
+                OutlinedTextField(
+                    value = direccion,
+                    onValueChange = { direccion = it },
+                    singleLine = true,
+                    enabled = !uiState.isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(PetConnectFormStyle.fieldRadius),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PetConnectFormStyle.primary,
+                        unfocusedBorderColor = PetConnectFormStyle.border,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                PetConnectFormLabel("Teléfono de contacto", required = true)
+
+                OutlinedTextField(
+                    value = telefono,
+                    onValueChange = { telefono = it },
+                    singleLine = true,
+                    enabled = !uiState.isLoading,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(PetConnectFormStyle.fieldRadius),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PetConnectFormStyle.primary,
+                        unfocusedBorderColor = PetConnectFormStyle.border,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+            }
+
 
             Text(
                 text = "Coordenadas geográficas",
@@ -222,33 +290,58 @@ fun EditBusinessScreen(
             )
 
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = latitud,
-                    onValueChange = { latitud = it },
-                    label = { Text("Latitud") },
-                    singleLine = true,
-                    enabled = !uiState.isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal
-                    ),
+                Column(
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp)
-                )
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    PetConnectFormLabel("Latitud", required = true)
 
-                OutlinedTextField(
-                    value = longitud,
-                    onValueChange = { longitud = it },
-                    label = { Text("Longitud") },
-                    singleLine = true,
-                    enabled = !uiState.isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal
-                    ),
+                    OutlinedTextField(
+                        value = latitud,
+                        onValueChange = { latitud = it },
+                        singleLine = true,
+                        enabled = !uiState.isLoading,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(PetConnectFormStyle.fieldRadius),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PetConnectFormStyle.primary,
+                            unfocusedBorderColor = PetConnectFormStyle.border,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
+                        )
+                    )
+                }
+
+                Column(
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp)
-                )
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    PetConnectFormLabel("Longitud", required = true)
+
+                    OutlinedTextField(
+                        value = longitud,
+                        onValueChange = { longitud = it },
+                        singleLine = true,
+                        enabled = !uiState.isLoading,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(PetConnectFormStyle.fieldRadius),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PetConnectFormStyle.primary,
+                            unfocusedBorderColor = PetConnectFormStyle.border,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
+                        )
+                    )
+                }
             }
 
             Surface(
@@ -321,8 +414,9 @@ fun EditBusinessScreen(
                 },
                 enabled = !uiState.isLoading,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                    .fillMaxWidth(0.72f)
+                    .height(48.dp)
+                    .align(Alignment.CenterHorizontally),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = VerdeEdicion
                 ),

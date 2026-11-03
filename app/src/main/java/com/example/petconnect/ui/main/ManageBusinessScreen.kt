@@ -15,8 +15,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.petconnect.data.model.Business
 import androidx.compose.runtime.*
+import com.example.petconnect.ui.components.PetConnectTopBar
+import com.example.petconnect.data.model.petConnectCategories
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.example.petconnect.R
 
-private val VerdeGestion = Color(0xFF1F6F6B)
+private val VerdeGestion = Color(0xFF227C78)
 private val FondoGestion = Color(0xFFFAF9F6)
 
 
@@ -35,6 +41,19 @@ fun ManageBusinessScreen(
     var mostrarDialogoEliminar by remember {
         mutableStateOf(false)
     }
+    val imagenCategoria = when (business.categoria) {
+        "veterinaria" -> R.drawable.cat_veterinaria
+        "peluqueria" -> R.drawable.cat_peluqueria
+        "bano" -> R.drawable.cat_bano
+        "guarderia" -> R.drawable.cat_guarderia
+        "paseadores" -> R.drawable.cat_paseadores
+        "adiestramiento" -> R.drawable.cat_adiestramiento
+        "parques" -> R.drawable.cat_parques
+        "tiendas" -> R.drawable.cat_tienda
+        "especialistas" -> R.drawable.cat_especialistas
+        "hoteles_petfriendly" -> R.drawable.cat_hotelpet
+        else -> R.drawable.cat_tienda
+    }
 
     Column(
         modifier = modifier
@@ -42,12 +61,27 @@ fun ManageBusinessScreen(
             .background(FondoGestion)
     ) {
 
-        BusinessHeader(
-            titulo = "Mi establecimiento",
-            subtitulo = "Información y administración",
-            onBack = onBack,
-            backEnabled = !isDeleting
+
+        PetConnectTopBar(
+            onBack = {
+                if (!isDeleting) {
+                    onBack()
+                }
+            }
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Mi establecimiento",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = VerdeGestion,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
 
         Column(
             modifier = Modifier
@@ -55,9 +89,9 @@ fun ManageBusinessScreen(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 20.dp,
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = 8.dp,
                     bottom = 16.dp
                 ),
             verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -77,9 +111,11 @@ fun ManageBusinessScreen(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "🏪",
-                        style = MaterialTheme.typography.headlineLarge
+                    Image(
+                        painter = painterResource(id = imagenCategoria),
+                        contentDescription = business.categoria,
+                        modifier = Modifier.size(54.dp),
+                        contentScale = ContentScale.Fit
                     )
                 }
 
@@ -91,8 +127,12 @@ fun ManageBusinessScreen(
                     )
 
                     Text(
-                        text = business.categoria,
-                        color = Color.Gray
+                        text = petConnectCategories
+                            .firstOrNull { it.id == business.categoria }
+                            ?.nombre
+                            ?: business.categoria,
+                        color = Color(0xFF71817E),
+                        style = MaterialTheme.typography.bodyMedium
                     )
 
                     Spacer(Modifier.height(6.dp))
@@ -173,8 +213,8 @@ fun ManageBusinessScreen(
                 .fillMaxWidth()
                 .background(FondoGestion)
                 .padding(
-                    start = 20.dp,
-                    end = 20.dp,
+                    start = 24.dp,
+                    end = 24.dp,
                     top = 12.dp,
                     bottom = 16.dp
                 ),
@@ -186,8 +226,9 @@ fun ManageBusinessScreen(
                     onEdit(business)
                 },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                    .fillMaxWidth(0.72f)
+                    .height(48.dp)
+                    .align(Alignment.CenterHorizontally),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = VerdeGestion
@@ -195,31 +236,25 @@ fun ManageBusinessScreen(
                 enabled = !isDeleting
             ) {
                 Text(
-                    text = "✎  Editar establecimiento",
+                    text = "Editar establecimiento",
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            OutlinedButton(
+
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 4.dp),
+                color = Color(0xFFE8E8E3)
+            )
+
+            TextButton(
                 onClick = {
                     mostrarDialogoEliminar = true
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    Color(0xFFE0654F)
-                ),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFFE0654F)
-                ),
-                enabled = !isDeleting
+                enabled = !isDeleting,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
-
                 if (isDeleting) {
-
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
@@ -234,17 +269,17 @@ fun ManageBusinessScreen(
                         } else {
                             "Esperando conexión..."
                         },
-                        fontWeight = FontWeight.Bold
+                        color = Color(0xFFE0654F)
                     )
-
                 } else {
-
                     Text(
                         text = "Eliminar establecimiento",
-                        fontWeight = FontWeight.Bold
+                        color = Color(0xFFE0654F),
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
+
             deleteError?.let { error ->
 
                 Text(
