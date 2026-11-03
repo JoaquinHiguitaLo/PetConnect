@@ -227,7 +227,6 @@ Esta organización facilita el mantenimiento, la reutilización de componentes y
 
 ### Gestión de mascotas y cuidados
 
-- Edición de vacunas registradas, si aún no está completada.
 - Recordatorios individuales.
 - Gestión funcional de citas, medicamentos y otros cuidados.
 - Indicadores de próximas vacunas y actividades.
